@@ -32,6 +32,28 @@
     .ticket .top b{font-size:16px}
     .muted{opacity:.75}
     .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
+
+    /* per-line cart notes */
+    .cartLine{border:1px solid #ddd; border-radius:10px; padding:10px; margin-top:10px}
+    .cartLineTop{display:flex; justify-content:space-between; align-items:center; gap:10px}
+    .cartLineName{font-weight:700}
+    .cartLineMeta{font-size:13px; opacity:.85}
+    .cartLineBtns{display:flex; gap:8px; align-items:center}
+    .cartLineBtns button{width:44px; height:40px}
+    .noteBox{width:100%; margin-top:8px}
+    .noteBox textarea{width:100%; font-size:15px}
+
+    /* modal */
+    .modalBack{position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; padding:16px; z-index:9999}
+    .modal{background:#fff; border-radius:14px; padding:14px; max-width:560px; width:100%; border:1px solid #ddd}
+    .modal h3{margin:0 0 10px; font-size:18px}
+    .modal .btnGrid{display:flex; flex-wrap:wrap; gap:10px}
+    .modal button{padding:10px 12px; border-radius:12px; border:1px solid #aaa; background:#fff}
+    .modal button.primary{border:2px solid #000; font-weight:700}
+    .modal .field{margin-top:10px}
+    .modal label{display:block; font-size:13px; opacity:.85; margin-bottom:4px}
+    .modal select, .modal input{width:100%; padding:10px; border-radius:10px; border:1px solid #aaa}
+    .modal .rowEnd{display:flex; justify-content:flex-end; gap:10px; margin-top:12px}
   </style>
 </head>
 <body>
@@ -48,13 +70,6 @@
   </div>
 
   <div id="itemsWrap"></div>
-
-  <div class="panel">
-    <div style="font-weight:700;margin-bottom:6px;">Notes (manual input only)</div>
-    <textarea id="note" rows="3" style="width:100%;"
-      placeholder="e.g. No spicy, peanut allergy, no garlic, one portion less salt..."></textarea>
-    <div class="small">This field is always manual input.</div>
-  </div>
 
   <!-- Overview / fallback -->
   <div class="panel">
@@ -101,15 +116,36 @@
       <button id="submitBtn" type="button">Send Order</button>
     </div>
     <div id="status" class="danger" style="margin-top:6px;"></div>
-    <pre id="cartPreview"></pre>
+
+    <div id="cartLines"></div>
+
+    <pre id="cartPreview" style="display:none"></pre>
+  </div>
+
+  <!-- modal -->
+  <div id="modalBack" class="modalBack">
+    <div class="modal" role="dialog" aria-modal="true">
+      <h3 id="modalTitle">Select</h3>
+      <div id="modalBody"></div>
+      <div class="rowEnd">
+        <button id="modalCancel" type="button">Cancel</button>
+        <button id="modalOk" class="primary" type="button">OK</button>
+      </div>
+    </div>
   </div>
 
 <script>
   // Paste your Apps Script Web App URL here:
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxzxwszj6lmX27GgSahiFcCTaH9bWQle7ovY3LNtUfTkV6wkY97EBaVZ3rSiDh8FDAX/exec";
 
-  // Menu (names only). Adjust if your spelling differs.
-  const MENU = {
+  function mustHaveUrl_(){
+    return typeof SCRIPT_URL === "string"
+      && SCRIPT_URL.startsWith("https://script.google.com/macros/")
+      && SCRIPT_URL.endsWith("/exec");
+  }
+
+  // --- FOOD MENU (names only) ---
+  const FOOD_MENU = {
     "Starters": [
       "Homemade Pandan Fried Chicken",
       "Roti Prata",
@@ -123,7 +159,7 @@
       "Spring Roll (Veg)",
       "Spring Roll (Meat)",
       "Five-Spice Fried Roll",
-      "Gyoza (chicken)",
+      "Gyoza (Chicken)",
       "Gyoza (Veg)",
       "Salt & Pepper Chicken",
       "Crispy Garlic Ribs"
@@ -139,10 +175,10 @@
       "Nyonya Gulai Curry (Beef)",
       "Nyonya Gulai Curry (Tofu)",
       "Nyonya Gulai Curry (Prawn)",
-      "Red Curry(Chicken)",
-      "Red Curry(Beef)",
-      "Red Curry(Tofu)",
-      "Red Curry(Prawn)"
+      "Red Curry (Chicken)",
+      "Red Curry (Beef)",
+      "Red Curry (Tofu)",
+      "Red Curry (Prawn)"
     ],
     "Noodles": [
       "Malaysian Curry Laksa (Chicken)",
@@ -166,7 +202,7 @@
       "Szechuan (Chicken)",
       "Szechuan (King Prawn)",
       "Sambal Stir-Fried Morning Glory",
-      "Galic Stir-Fried Morning Glory",
+      "Garlic Stir-Fried Morning Glory"
     ],
     "Asian Salads": [
       "Acar Salad",
@@ -197,31 +233,145 @@
     ]
   };
 
+  // --- DRINKS MENU (from your photos) ---
+  // items use: type = "plain" | "wine" | "spirit"
+  // wine sizes: list of {label, price}
+  // spirit: basePrice per shot; shots selectable; optional mixer +£1 (choice list)
+  const MIXER_CHOICES = ["Lemonade", "Coke", "Diet Coke", "Tonic", "Slimline Tonic", "Fruit Juice"];
+
+  const DRINKS_MENU = {
+    "Drinks — White Wine": [
+      { type:"wine", name:"Cuvée Duboeuf Blanc (Bouquet Label)", sizes:[ {label:"Bottle", price:27.95} ] },
+      { type:"wine", name:"Pinot Grigio delle Dolomiti (Trovati)", sizes:[
+        {label:"125ml", price:5.50},{label:"175ml", price:7.50},{label:"Bottle", price:28.95}
+      ]},
+      { type:"wine", name:"Fiddlehead Sauvignon Blanc", sizes:[
+        {label:"125ml", price:5.75},{label:"175ml", price:7.95},{label:"Bottle", price:29.95}
+      ]},
+      { type:"wine", name:"Sancerre (Domaine Cherrier)", sizes:[ {label:"Bottle", price:49.95} ] },
+      { type:"wine", name:"Chablis 1er Cru (Vau de Vey, Brocard Organic)", sizes:[ {label:"Bottle", price:69.95} ] }
+    ],
+    "Drinks — Rosé Wine": [
+      { type:"wine", name:"Zinfandel Rosé (Beringer)", sizes:[
+        {label:"125ml", price:5.25},{label:"175ml", price:6.95},{label:"Bottle", price:27.95}
+      ]},
+      { type:"wine", name:"Lady A (La Coste Provence Rosé)", sizes:[ {label:"Bottle", price:39.95} ] }
+    ],
+    "Drinks — Red Wine": [
+      { type:"wine", name:"Cuvée Duboeuf Rouge (Bouquet Label)", sizes:[ {label:"Bottle", price:27.95} ] },
+      { type:"wine", name:"Merlot Reserva (Poco Mas)", sizes:[
+        {label:"125ml", price:5.50},{label:"175ml", price:7.50},{label:"Bottle", price:28.95}
+      ]},
+      { type:"wine", name:"Malbec Porteño (Norton)", sizes:[
+        {label:"125ml", price:5.75},{label:"175ml", price:7.95},{label:"Bottle", price:29.95}
+      ]},
+      { type:"wine", name:"Rioja Reserva (Conde Valdemar)", sizes:[ {label:"Bottle", price:44.95} ] },
+      { type:"wine", name:"Château Chantalouette (Pomerol)", sizes:[ {label:"Bottle", price:79.95} ] }
+    ],
+    "Drinks — The Fizz": [
+      { type:"wine", name:"Prosecco Extra Dry (Serena 1881)", sizes:[ {label:"Mini bottle", price:8.95} ] },
+      { type:"wine", name:"Cá del Console Prosecco Extra Dry", sizes:[ {label:"Bottle", price:29.95} ] },
+      { type:"wine", name:"Organic Prosecco (Serena 1881)", sizes:[ {label:"Bottle", price:35.00} ] },
+      { type:"wine", name:"Champagne Laurent-Perrier La Cuvée", sizes:[ {label:"Bottle", price:79.95} ] }
+    ],
+    "Drinks — Mocktails": [
+      { type:"plain", name:"Galaxy Strawberry", price:5.90 },
+      { type:"plain", name:"Lemon Yakult", price:5.90 },
+      { type:"plain", name:"Passionfruit Green Tea", price:5.90 }
+    ],
+    "Drinks — Cocktails": [
+      { type:"plain", name:"Strawberry Jupiter", price:9.90 },
+      { type:"plain", name:"Oriental Blue Moon", price:9.90 }
+    ],
+    "Drinks — Malaysian Signature Drinks": [
+      { type:"plain", name:"White Coffee Iced", price:3.95 },
+      { type:"plain", name:"Syrup Bandung", price:3.95 },
+      { type:"plain", name:"Milo Iced", price:3.95 }
+    ],
+    "Drinks — Bottled Beer": [
+      { type:"plain", name:"Tsing Tao Beer", price:4.90 },
+      { type:"plain", name:"Tiger Beer", price:4.90 },
+      { type:"plain", name:"Asahi Beer", price:4.90 }
+    ],
+    "Drinks — Spirits (per shot)": [
+      { type:"spirit", name:"Gin", basePrice:3.60 },
+      { type:"spirit", name:"Vodka", basePrice:3.60 },
+      { type:"spirit", name:"Tequila", basePrice:3.60 },
+      { type:"spirit", name:"Whisky", basePrice:4.10 },
+      { type:"spirit", name:"Brandy", basePrice:4.10 },
+      { type:"spirit", name:"Hennessy XO Brandy", basePrice:18.00 },
+      { type:"spirit", name:"Tequila Rose", basePrice:4.00 },
+      { type:"spirit", name:"Cazcabel Honey", basePrice:4.00 }
+    ],
+    "Drinks — Soft Drinks": [
+      { type:"plain", name:"J2O Orange & Passionfruit", price:3.00 },
+      { type:"plain", name:"Coke", price:3.00 },
+      { type:"plain", name:"Diet Coke", price:3.00 },
+      { type:"plain", name:"Lemonade", price:3.00 },
+      { type:"plain", name:"Tonic", price:3.00 },
+      { type:"plain", name:"Slimline Tonic", price:3.00 },
+      { type:"plain", name:"Fruit Juice", price:3.00 },
+      { type:"plain", name:"Aloe Vera Juice", price:3.50 },
+      { type:"plain", name:"Coconut Juice", price:3.50 },
+      { type:"plain", name:"Still Water", price:2.50 },
+      { type:"plain", name:"Sparkling Water", price:2.50 }
+    ],
+    "Drinks — Hot Drinks": [
+      { type:"plain", name:"Chinese Tea (per person, unlimited refill)", price:2.50 },
+      { type:"plain", name:"English Tea", price:3.00 },
+      { type:"plain", name:"Coffee", price:3.00 }
+    ]
+  };
+
+  // Combined categories
+  const MENU = { ...FOOD_MENU, ...DRINKS_MENU };
+
+  // cart lines: each line has its own note
   const state = {
     table: "T1",
     cat: Object.keys(MENU)[0],
-    cart: {},
-    tab: "NEW" // NEW or KEYED_IN
+    cartLines: [], // [{id, baseName, displayName, qty, note}]
+    tab: "NEW"
   };
 
   const tableSel = document.getElementById('tableSel');
   const catSel = document.getElementById('catSel');
   const itemsWrap = document.getElementById('itemsWrap');
-  const noteEl = document.getElementById('note');
   const totalQtyEl = document.getElementById('totalQty');
-  const cartPreview = document.getElementById('cartPreview');
   const statusEl = document.getElementById('status');
   const overviewBox = document.getElementById('overviewBox');
+  const cartLinesEl = document.getElementById('cartLines');
   const ordersWrap = document.getElementById('ordersWrap');
   const liveStatus = document.getElementById('liveStatus');
   const autoChk = document.getElementById('autoChk');
 
-  function mustHaveUrl_(){
-  return typeof SCRIPT_URL === "string"
-    && SCRIPT_URL.startsWith("https://script.google.com/macros/")
-    && SCRIPT_URL.endsWith("/exec");
-}
+  // modal refs
+  const modalBack = document.getElementById('modalBack');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalBody = document.getElementById('modalBody');
+  const modalCancel = document.getElementById('modalCancel');
+  const modalOk = document.getElementById('modalOk');
 
+  function uid_(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
+
+  function openModal_(title, renderFn){
+    return new Promise((resolve) => {
+      modalTitle.textContent = title;
+      modalBody.innerHTML = "";
+      const api = renderFn(modalBody);
+
+      function close(val){
+        modalBack.style.display = "none";
+        modalCancel.onclick = null;
+        modalOk.onclick = null;
+        resolve(val);
+      }
+
+      modalBack.style.display = "flex";
+      modalCancel.onclick = () => close(null);
+      modalOk.onclick = () => close(api.get());
+    });
+  }
 
   // Tables 1..33
   for (let i=1;i<=33;i++){
@@ -230,7 +380,7 @@
     tableSel.appendChild(o);
   }
   tableSel.value = state.table;
-  tableSel.onchange=()=>{state.table=tableSel.value; renderAll();};
+  tableSel.onchange=()=>{state.table=tableSel.value; renderOverview();};
 
   // Categories
   Object.keys(MENU).forEach(c=>{
@@ -241,10 +391,132 @@
   catSel.value = state.cat;
   catSel.onchange=()=>{state.cat=catSel.value;renderItems();};
 
-  function setQty(name, qty){
-    if (qty <= 0) delete state.cart[name];
-    else state.cart[name] = qty;
+  function countBase_(baseName){
+    return state.cartLines.reduce((s,l)=> s + (l.baseName === baseName ? l.qty : 0), 0);
+  }
+
+  function addLine_(line){
+    state.cartLines.push(line);
     renderAll();
+  }
+
+  function removeOne_(baseName){
+    // remove 1 unit from last matching line
+    for (let i = state.cartLines.length - 1; i >= 0; i--){
+      const l = state.cartLines[i];
+      if (l.baseName === baseName){
+        if (l.qty > 1) l.qty -= 1;
+        else state.cartLines.splice(i,1);
+        break;
+      }
+    }
+    renderAll();
+  }
+
+  async function handleAdd_(cat, item){
+    // FOOD (string)
+    if (typeof item === "string"){
+      const baseName = item;
+      addLine_({ id: uid_(), baseName, displayName: baseName, qty: 1, note: "" });
+      return;
+    }
+
+    // DRINKS (object)
+    if (item.type === "plain"){
+      const baseName = item.name;
+      const disp = `${item.name} (£${item.price.toFixed(2)})`;
+      addLine_({ id: uid_(), baseName, displayName: disp, qty: 1, note: "" });
+      return;
+    }
+
+    if (item.type === "wine"){
+      const choice = await openModal_(`Select size — ${item.name}`, (root) => {
+        const wrap = document.createElement("div");
+        wrap.className = "btnGrid";
+
+        let selected = item.sizes[0]?.label || "Bottle";
+        item.sizes.forEach(s => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.textContent = `${s.label} (£${Number(s.price).toFixed(2)})`;
+          b.onclick = () => {
+            selected = s.label;
+            [...wrap.querySelectorAll("button")].forEach(x=>x.classList.remove("primary"));
+            b.classList.add("primary");
+          };
+          if (s.label === selected) b.classList.add("primary");
+          wrap.appendChild(b);
+        });
+
+        root.appendChild(wrap);
+        return { get: ()=> selected };
+      });
+
+      if (!choice) return;
+
+      const s = item.sizes.find(x=>x.label === choice) || item.sizes[0];
+      const baseName = item.name;
+      const disp = `${item.name} — ${s.label} (£${Number(s.price).toFixed(2)})`;
+      addLine_({ id: uid_(), baseName, displayName: disp, qty: 1, note: "" });
+      return;
+    }
+
+    if (item.type === "spirit"){
+      const res = await openModal_(`Spirits — ${item.name}`, (root) => {
+        const shotsField = document.createElement("div");
+        shotsField.className = "field";
+        shotsField.innerHTML = `<label>Shots (default 1)</label>`;
+        const shotsSel = document.createElement("select");
+        [1,2,3,4].forEach(n=>{
+          const o = document.createElement("option");
+          o.value = String(n);
+          o.textContent = `${n} shot${n>1?"s":""}`;
+          shotsSel.appendChild(o);
+        });
+        shotsSel.value = "1";
+        shotsField.appendChild(shotsSel);
+
+        const mixerField = document.createElement("div");
+        mixerField.className = "field";
+        mixerField.innerHTML = `<label>Mixer (+£1) — optional</label>`;
+        const mixerSel = document.createElement("select");
+        const none = document.createElement("option");
+        none.value = "";
+        none.textContent = "No mixer";
+        mixerSel.appendChild(none);
+        MIXER_CHOICES.forEach(m=>{
+          const o = document.createElement("option");
+          o.value = m;
+          o.textContent = m;
+          mixerSel.appendChild(o);
+        });
+
+        mixerField.appendChild(mixerSel);
+
+        root.appendChild(shotsField);
+        root.appendChild(mixerField);
+
+        return {
+          get: ()=> ({
+            shots: Number(shotsSel.value || "1") || 1,
+            mixer: mixerSel.value || ""
+          })
+        };
+      });
+
+      if (!res) return;
+
+      const shots = Math.max(1, Math.min(6, Number(res.shots)||1));
+      const mixer = res.mixer || "";
+      const mixerText = mixer ? ` + Mixer: ${mixer} (+£1)` : "";
+      const baseName = item.name;
+
+      const price = item.basePrice * shots + (mixer ? 1 : 0);
+      const disp = `${item.name} — ${shots} shot${shots>1?"s":""}${mixerText} (£${price.toFixed(2)})`;
+
+      addLine_({ id: uid_(), baseName, displayName: disp, qty: 1, note: "" });
+      return;
+    }
   }
 
   function renderItems(){
@@ -257,15 +529,16 @@
     const g=document.createElement('div');
     g.className="grid";
 
-    (MENU[state.cat] || []).forEach(name=>{
-      const q=state.cart[name]||0;
+    const list = MENU[state.cat] || [];
+    list.forEach(item=>{
+      const baseName = (typeof item === "string") ? item : item.name;
 
       const d=document.createElement('div');
       d.className="item";
 
       const left=document.createElement('div');
       left.className="name";
-      left.textContent=name;
+      left.textContent = (typeof item === "string") ? item : item.name;
 
       const right=document.createElement('div');
       right.className="qty";
@@ -273,15 +546,15 @@
       const minus=document.createElement('button');
       minus.type="button";
       minus.textContent="−";
-      minus.onclick=()=>setQty(name, q-1);
+      minus.onclick=()=>removeOne_(baseName);
 
       const mid=document.createElement('span');
-      mid.textContent=q;
+      mid.textContent = countBase_(baseName);
 
       const plus=document.createElement('button');
       plus.type="button";
       plus.textContent="+";
-      plus.onclick=()=>setQty(name, q+1);
+      plus.onclick=()=>handleAdd_(state.cat, item);
 
       right.append(minus, mid, plus);
       d.append(left, right);
@@ -291,37 +564,101 @@
     itemsWrap.appendChild(g);
   }
 
-  function buildOverviewText() {
-    const items = Object.entries(state.cart)
-      .map(([name, qty]) => ({ name, qty }))
-      .filter(x => x.qty > 0)
-      .sort((a,b)=>a.name.localeCompare(b.name));
+  function totalQty_(){
+    return state.cartLines.reduce((s,l)=> s + (Number(l.qty)||0), 0);
+  }
 
-    const total = items.reduce((s,it)=>s+it.qty,0);
+  function buildOverviewText() {
     const lines = [];
     lines.push(`TABLE: ${state.table}`);
-    lines.push(`TOTAL: ${total}`);
+    lines.push(`TOTAL: ${totalQty_()}`);
     lines.push(`TIME: ${new Date().toLocaleString()}`);
     lines.push("");
 
-    if (items.length === 0) lines.push("(No items selected)");
-    else items.forEach(it => lines.push(`${it.qty} x ${it.name}`));
-
-    const note = noteEl.value.trim();
-    lines.push("");
-    lines.push(`NOTE: ${note ? note : "-"}`);
+    if (!state.cartLines.length){
+      lines.push("(No items selected)");
+    } else {
+      state.cartLines.forEach(l => {
+        lines.push(`${l.qty} x ${l.displayName}`);
+        const note = (l.note || "").trim();
+        if (note) lines.push(`  - NOTE: ${note}`);
+      });
+    }
     return lines.join("\n");
   }
 
   function renderCart(){
-    const arr=Object.entries(state.cart)
-      .map(([n,q])=>({n,q}))
-      .filter(x=>x.q>0)
-      .sort((a,b)=>a.n.localeCompare(b.n))
-      .map(x=>`${x.q} x ${x.n}`);
+    totalQtyEl.textContent = totalQty_();
+    cartLinesEl.innerHTML = "";
 
-    cartPreview.textContent = arr.length ? arr.join("\n") : "(No items selected)";
-    totalQtyEl.textContent = Object.values(state.cart).reduce((a,b)=>a+b,0);
+    state.cartLines.forEach((l, idx) => {
+      const wrap = document.createElement("div");
+      wrap.className = "cartLine";
+
+      const top = document.createElement("div");
+      top.className = "cartLineTop";
+
+      const left = document.createElement("div");
+      left.innerHTML = `<div class="cartLineName">${escapeHtml(l.displayName)}</div>`;
+
+      const btns = document.createElement("div");
+      btns.className = "cartLineBtns";
+
+      const minus = document.createElement("button");
+      minus.type="button";
+      minus.textContent="−";
+      minus.onclick=()=>{
+        if (l.qty > 1) l.qty -= 1;
+        else state.cartLines.splice(idx,1);
+        renderAll();
+      };
+
+      const mid = document.createElement("span");
+      mid.style.minWidth="26px";
+      mid.style.textAlign="center";
+      mid.style.fontWeight="700";
+      mid.textContent = l.qty;
+
+      const plus = document.createElement("button");
+      plus.type="button";
+      plus.textContent="+";
+      // for wines/spirits/plain drinks, adding again should create a NEW line (as requested for different size choices)
+      // so always add new line by re-triggering handleAdd using baseName lookup:
+      plus.onclick=()=>{
+        // find original item in MENU for this baseName in current category OR anywhere
+        const itemObj = findItemByName_(l.baseName);
+        if (itemObj){
+          handleAdd_(state.cat, itemObj);
+        } else {
+          // fallback: just increment qty
+          l.qty += 1;
+          renderAll();
+        }
+      };
+
+      const del = document.createElement("button");
+      del.type="button";
+      del.textContent="×";
+      del.onclick=()=>{
+        state.cartLines.splice(idx,1);
+        renderAll();
+      };
+
+      btns.append(minus, mid, plus, del);
+      top.append(left, btns);
+
+      const noteBox = document.createElement("div");
+      noteBox.className = "noteBox";
+      const ta = document.createElement("textarea");
+      ta.rows = 2;
+      ta.placeholder = "Item note (e.g. no spicy, allergy, less salt...)";
+      ta.value = l.note || "";
+      ta.oninput = ()=>{ l.note = ta.value; renderOverview(); };
+      noteBox.appendChild(ta);
+
+      wrap.append(top, noteBox);
+      cartLinesEl.appendChild(wrap);
+    });
   }
 
   function renderOverview(){
@@ -334,9 +671,26 @@
     renderOverview();
   }
 
+  function escapeHtml(s){
+    return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function findItemByName_(name){
+    for (const cat of Object.keys(MENU)){
+      const arr = MENU[cat] || [];
+      for (const it of arr){
+        if (typeof it === "string"){
+          if (it === name) return it;
+        } else if (it && it.name === name){
+          return it;
+        }
+      }
+    }
+    return null;
+  }
+
   document.getElementById('clearBtn').onclick=()=>{
-    state.cart = {};
-    noteEl.value = "";
+    state.cartLines = [];
     statusEl.textContent = "";
     statusEl.className = "danger";
     renderAll();
@@ -368,18 +722,20 @@
     else document.exitFullscreen?.();
   };
 
-  // Send order (creates NEW)
+  // Send order
   document.getElementById('submitBtn').onclick=async()=>{
     statusEl.className="danger";
-    if(!Object.keys(state.cart).length){statusEl.textContent="No items selected.";return;}
+    if(!state.cartLines.length){statusEl.textContent="No items selected.";return;}
     if(!mustHaveUrl_()){ statusEl.textContent="SCRIPT_URL is not set."; return; }
 
-    const payload = {
-      action: "create",
-      table: state.table,
-      items: Object.entries(state.cart).map(([name,qty])=>({name,qty})),
-      note: noteEl.value.trim()
-    };
+    // backend expects items: [{name, qty}] - we include note per item line
+    const items = state.cartLines.map(l => ({
+      name: l.displayName,     // keep size/shot/mixer in name for clarity downstairs
+      qty: l.qty,
+      note: (l.note || "").trim()
+    }));
+
+    const payload = { action: "create", table: state.table, items, note: "" };
 
     try{
       const r = await fetch(SCRIPT_URL, {
@@ -390,8 +746,7 @@
       const j = await r.json();
       if(!j.ok) throw new Error(j.error || "Unknown error");
 
-      state.cart = {};
-      noteEl.value = "";
+      state.cartLines = [];
       renderAll();
 
       statusEl.textContent="Order sent (NEW).";
@@ -418,14 +773,13 @@
   tabNewBtn.onclick = ()=>setTab("NEW");
   tabKeyedBtn.onclick = ()=>setTab("KEYED_IN");
 
-  // Orders rendering
   function parseItems(itemsJson){
     try{
       const arr = JSON.parse(itemsJson || "[]");
       if (!Array.isArray(arr)) return [];
       return arr
         .filter(x => x && x.name && x.qty)
-        .map(x => ({name:String(x.name), qty:Number(x.qty)||0}))
+        .map(x => ({name:String(x.name), qty:Number(x.qty)||0, note:String(x.note||"")}))
         .filter(x => x.qty > 0);
     }catch{ return []; }
   }
@@ -451,10 +805,6 @@
     return true;
   }
 
-  function escapeHtml(s){
-    return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-  }
-
   function renderOrders(orders){
     ordersWrap.innerHTML = "";
     if (!orders.length){
@@ -464,8 +814,11 @@
 
     orders.forEach(o=>{
       const items = parseItems(o.itemsJson);
-      const lines = items.map(it => `${it.qty} x ${it.name}`).join("\n") || "(No items)";
-      const note = (o.note || "").toString().trim();
+      const lines = items.map(it => {
+        const base = `${it.qty} x ${it.name}`;
+        const n = (it.note || "").trim();
+        return n ? `${base}\n  - NOTE: ${n}` : base;
+      }).join("\n") || "(No items)";
 
       const div = document.createElement("div");
       div.className = "ticket";
@@ -481,14 +834,12 @@
           <span class="muted">${escapeHtml(fmtTime(o.ts))}</span>
         </div>
         <pre>${escapeHtml(lines)}</pre>
-        <div class="small"><b>Note:</b> ${note ? escapeHtml(note) : "-"}</div>
         <div class="actions">
           ${primaryBtn}
           <span class="small muted">ID: ${escapeHtml(o.orderId || "")}</span>
         </div>
       `;
 
-      // attach button handler
       const btn = div.querySelector("button[data-id]");
       btn.onclick = async () => {
         try{
@@ -558,9 +909,3 @@
 </script>
 </body>
 </html>
-
-
-
-
-
-
