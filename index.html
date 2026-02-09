@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>Order Pad</title>
   <style>
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:16px; max-width:1050px}
@@ -79,6 +79,11 @@
     .modal label{display:block; font-size:13px; opacity:.85; margin-bottom:4px}
     .modal select{width:100%; padding:10px; border-radius:10px; border:1px solid #aaa}
     .modal .rowEnd{display:flex; justify-content:flex-end; gap:10px; margin-top:12px}
+
+    html, body {
+  touch-action: manipulation; /* reduces double-tap zoom */
+  }
+
   </style>
 </head>
 <body>
@@ -392,7 +397,12 @@
   function totalQty_(){ return state.cartLines.reduce((s,l)=> s + (Number(l.qty)||0), 0); }
   function countBase_(baseName){ return state.cartLines.reduce((s,l)=> s + (l.baseName===baseName ? l.qty : 0), 0); }
 
-  function addLine_(line){ state.cartLines.push(line); renderAll(); }
+  function addLine_(line){
+  state.cartLines.push(line);
+  renderAll();
+  // after DOM updated
+  setTimeout(scrollCartToBottom_, 0);
+  }
 
   function removeOne_(baseName){
     for (let i = state.cartLines.length - 1; i >= 0; i--){
@@ -575,6 +585,13 @@
     return lines.join("\n");
   }
 
+  function scrollCartToBottom_(){
+  // only auto-scroll when cart is visible on Order page
+  try{
+    cartListWrap.scrollTop = cartListWrap.scrollHeight;
+  }catch{}
+  }
+
   function renderCart(){
     totalQtyEl.textContent = totalQty_();
     cartLinesEl.innerHTML = "";
@@ -608,10 +625,16 @@
       const plus = document.createElement("button");
       plus.type="button"; plus.textContent="+";
       plus.onclick=()=>{
-        const itemObj = findItemByName_(l.baseName);
-        if (itemObj) handleAdd_(itemObj);  // wines/spirits will prompt again -> new line
-        else { l.qty += 1; renderAll(); }
-      };
+  const itemObj = findItemByName_(l.baseName);
+  if (itemObj) {
+    handleAdd_(itemObj); // wines/spirits -> new line -> will auto scroll via addLine_
+  } else {
+    l.qty += 1;
+    renderAll();
+    setTimeout(scrollCartToBottom_, 0);
+  }
+  };
+
 
       const del = document.createElement("button");
       del.type="button"; del.textContent="×";
@@ -865,6 +888,27 @@
   setCartExpanded_(false);
   renderAll();
   fetchOrders();
+
+  // Block double-tap zoom (iOS Safari)
+let lastTouchEnd = 0;
+document.addEventListener('touchend', function (e) {
+  const now = Date.now();
+  if (now - lastTouchEnd <= 300) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive: false });
+
+// Block pinch zoom (iOS Safari)
+document.addEventListener('gesturestart', function (e) {
+  e.preventDefault();
+});
+document.addEventListener('gesturechange', function (e) {
+  e.preventDefault();
+});
+document.addEventListener('gestureend', function (e) {
+  e.preventDefault();
+});
+
 </script>
 </body>
 </html>
+
