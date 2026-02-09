@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Order Pad</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; margin:16px; max-width:1050px}
+    h1{font-size:20px; margin:0 0 10px}
+    h2{font-size:16px; margin:18px 0 8px}
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    select, textarea, button, input{font-size:16px}
+    .cat{margin:16px 0 6px; font-weight:700}
+    .grid{display:grid; grid-template-columns:1fr; gap:8px}
+    .item{border:1px solid #ddd; border-radius:10px; padding:10px; display:flex; justify-content:space-between; gap:10px; align-items:center}
+    .name{font-weight:600}
+    .qty{display:flex; gap:8px; align-items:center}
+    .qty button{width:44px; height:40px}
+    .qty span{min-width:26px; text-align:center; font-weight:700}
+    .panel{border:1px solid #ddd; border-radius:10px; padding:10px; margin-top:14px}
+    pre{white-space:pre-wrap; word-break:break-word; background:#f7f7f7; padding:10px; border-radius:10px; margin:10px 0 0}
+    .cart{position:sticky; bottom:0; background:#fff; border-top:2px solid #000; padding:10px 0; margin-top:18px}
+    .danger{color:#b00020}
+    .ok{color:#0b6b0b}
+    .small{font-size:13px; opacity:.85}
+    .tabs{display:flex; gap:10px; margin-top:10px; flex-wrap:wrap}
+    .tabBtn{padding:8px 12px; border:1px solid #aaa; border-radius:999px; background:#fff}
+    .tabBtn.active{border:2px solid #000; font-weight:700}
+    .orders{display:grid; grid-template-columns:1fr; gap:10px}
+    .ticket{border:1px solid #ddd; border-radius:10px; padding:10px}
+    .ticket .top{display:flex; justify-content:space-between; gap:10px; align-items:baseline}
+    .ticket .top b{font-size:16px}
+    .muted{opacity:.75}
+    .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
+  </style>
+</head>
+<body>
+  <h1>Upstairs Ordering (Temporary)</h1>
+
+  <div class="row">
+    <label>Table:</label>
+    <select id="tableSel"></select>
+
+    <label>Category:</label>
+    <select id="catSel"></select>
+
+    <button id="clearBtn" type="button">Clear Current</button>
+  </div>
+
+  <div id="itemsWrap"></div>
+
+  <div class="panel">
+    <div style="font-weight:700;margin-bottom:6px;">Notes (manual input only)</div>
+    <textarea id="note" rows="3" style="width:100%;"
+      placeholder="e.g. No spicy, peanut allergy, no garlic, one portion less salt..."></textarea>
+    <div class="small">This field is always manual input.</div>
+  </div>
+
+  <!-- Overview / fallback -->
+  <div class="panel">
+    <div class="row" style="justify-content:space-between;">
+      <div><b>Overview (Fallback)</b> <span class="muted">— copy text or screenshot</span></div>
+      <div class="row">
+        <button id="copyBtn" type="button">Copy Text</button>
+        <button id="fullscreenBtn" type="button">Fullscreen</button>
+      </div>
+    </div>
+    <pre id="overviewBox"></pre>
+  </div>
+
+  <!-- Orders view -->
+  <h2>Orders</h2>
+  <div class="tabs">
+    <button id="tabNew" class="tabBtn active" type="button">New Orders</button>
+    <button id="tabKeyed" class="tabBtn" type="button">Keyed In</button>
+  </div>
+
+  <div class="row" style="margin-top:10px;">
+    <button id="refreshBtn" type="button">Refresh Now</button>
+    <label class="row" style="gap:6px;">
+      <input id="autoChk" type="checkbox" checked />
+      Auto-refresh
+    </label>
+    <span id="liveStatus" class="small"></span>
+  </div>
+
+  <div id="ordersWrap" class="orders" style="margin-top:10px;"></div>
+
+  <!-- End of day -->
+  <div class="panel">
+    <div class="row" style="justify-content:space-between;">
+      <div><b>End of Day</b> <span class="muted">— clears ALL records</span></div>
+      <button id="clearAllBtn" type="button">Clear All Records</button>
+    </div>
+    <div class="small">This requires a secret key. Use only when closing.</div>
+  </div>
+
+  <div class="cart">
+    <div class="row" style="justify-content:space-between;">
+      <div><b>Total items:</b> <span id="totalQty">0</span></div>
+      <button id="submitBtn" type="button">Send Order</button>
+    </div>
+    <div id="status" class="danger" style="margin-top:6px;"></div>
+    <pre id="cartPreview"></pre>
+  </div>
+
+<script>
+  // Paste your Apps Script Web App URL here:
+  const SCRIPT_URL = "PASTE_YOUR_WEB_APP_URL_HERE";
+
+  // Menu (names only). Adjust if your spelling differs.
+  const MENU = {
+    "Starters": [
+      "Homemade Pandan Fried Chicken",
+      "Roti Prata",
+      "Penang Style Grilled Tofu",
+      "House Combo Bento",
+      "Veggie House Combo",
+      "House Special Deep Fried Skewer Set",
+      "Crispy Duck (1/4)",
+      "Crispy Duck (1/2)",
+      "Grilled Chicken Satay Skewers",
+      "Spring Roll (Veg)",
+      "Spring Roll (Meat)",
+      "Five-Spice Fried Roll",
+      "Gyoza",
+      "Salt & Pepper Chicken",
+      "Crispy Garlic Ribs"
+    ],
+    "Malaysian Curries": [
+      "Rendang Beef Brisket",
+      "Malaysian Chicken Curry",
+      "Asam Curry",
+      "Nyonya Gulai Curry",
+      "Red Curry"
+    ],
+    "Noodles": [
+      "Malaysian Curry Laksa",
+      "Malay-Style Special Noodles",
+      "Malaysian Style Char Kuey Teow",
+      "Rojak Mee",
+      "Pad Malay",
+      "Wat Tan Hor Fun"
+    ],
+    "Asian Favourites": [
+      "Creamy Salted Egg (Crispy Chicken)",
+      "Creamy Salted Egg (King Prawn)",
+      "Kung Po (Beef/Chicken)",
+      "Kung Po (King Prawn)",
+      "Black Pepper (Beef/Chicken)",
+      "Black Pepper (King Prawn)",
+      "Szechuan (Beef/Chicken)",
+      "Szechuan (King Prawn)",
+      "Stir-Fried Morning Glory",
+      "Sambal / Garlic"
+    ],
+    "Asian Salads": [
+      "Acar Salad",
+      "Rojak Salad"
+    ],
+    "Sizzling Platters": [
+      "Sambal Sizzling King Prawn",
+      "Sizzling Black Pepper Beef Tenderloin"
+    ],
+    "Rice Dishes": [
+      "Nasi Lemak (Fried Chicken)",
+      "Nasi Lemak (Beef Brisket)",
+      "Nasi Goreng Sambal Fried Rice",
+      "Hainanese Chicken Rice",
+      "Pineapple Fried Rice",
+      "Vegetable Fried Rice"
+    ],
+    "Sides": [
+      "Coconut Rice",
+      "Fragrant Rice",
+      "Boiled Rice",
+      "Egg Fried Rice",
+      "Noodles",
+      "Chips"
+    ],
+    "Dessert": [
+      "Banana Fritter"
+    ]
+  };
+
+  const state = {
+    table: "T1",
+    cat: Object.keys(MENU)[0],
+    cart: {},
+    tab: "NEW" // NEW or KEYED_IN
+  };
+
+  const tableSel = document.getElementById('tableSel');
+  const catSel = document.getElementById('catSel');
+  const itemsWrap = document.getElementById('itemsWrap');
+  const noteEl = document.getElementById('note');
+  const totalQtyEl = document.getElementById('totalQty');
+  const cartPreview = document.getElementById('cartPreview');
+  const statusEl = document.getElementById('status');
+  const overviewBox = document.getElementById('overviewBox');
+  const ordersWrap = document.getElementById('ordersWrap');
+  const liveStatus = document.getElementById('liveStatus');
+  const autoChk = document.getElementById('autoChk');
+
+  function mustHaveUrl_(){
+    return SCRIPT_URL && !SCRIPT_URL.includes("PASTE_YOUR_WEB_APP_URL_HERE");
+  }
+
+  // Tables 1..33
+  for (let i=1;i<=33;i++){
+    const o=document.createElement('option');
+    o.value=`T${i}`; o.textContent=`T${i}`;
+    tableSel.appendChild(o);
+  }
+  tableSel.value = state.table;
+  tableSel.onchange=()=>{state.table=tableSel.value; renderAll();};
+
+  // Categories
+  Object.keys(MENU).forEach(c=>{
+    const o=document.createElement('option');
+    o.value=c; o.textContent=c;
+    catSel.appendChild(o);
+  });
+  catSel.value = state.cat;
+  catSel.onchange=()=>{state.cat=catSel.value;renderItems();};
+
+  function setQty(name, qty){
+    if (qty <= 0) delete state.cart[name];
+    else state.cart[name] = qty;
+    renderAll();
+  }
+
+  function renderItems(){
+    itemsWrap.innerHTML = "";
+    const title = document.createElement('div');
+    title.className = "cat";
+    title.textContent = state.cat;
+    itemsWrap.appendChild(title);
+
+    const g=document.createElement('div');
+    g.className="grid";
+
+    (MENU[state.cat] || []).forEach(name=>{
+      const q=state.cart[name]||0;
+
+      const d=document.createElement('div');
+      d.className="item";
+
+      const left=document.createElement('div');
+      left.className="name";
+      left.textContent=name;
+
+      const right=document.createElement('div');
+      right.className="qty";
+
+      const minus=document.createElement('button');
+      minus.type="button";
+      minus.textContent="−";
+      minus.onclick=()=>setQty(name, q-1);
+
+      const mid=document.createElement('span');
+      mid.textContent=q;
+
+      const plus=document.createElement('button');
+      plus.type="button";
+      plus.textContent="+";
+      plus.onclick=()=>setQty(name, q+1);
+
+      right.append(minus, mid, plus);
+      d.append(left, right);
+      g.appendChild(d);
+    });
+
+    itemsWrap.appendChild(g);
+  }
+
+  function buildOverviewText() {
+    const items = Object.entries(state.cart)
+      .map(([name, qty]) => ({ name, qty }))
+      .filter(x => x.qty > 0)
+      .sort((a,b)=>a.name.localeCompare(b.name));
+
+    const total = items.reduce((s,it)=>s+it.qty,0);
+    const lines = [];
+    lines.push(`TABLE: ${state.table}`);
+    lines.push(`TOTAL: ${total}`);
+    lines.push(`TIME: ${new Date().toLocaleString()}`);
+    lines.push("");
+
+    if (items.length === 0) lines.push("(No items selected)");
+    else items.forEach(it => lines.push(`${it.qty} x ${it.name}`));
+
+    const note = noteEl.value.trim();
+    lines.push("");
+    lines.push(`NOTE: ${note ? note : "-"}`);
+    return lines.join("\n");
+  }
+
+  function renderCart(){
+    const arr=Object.entries(state.cart)
+      .map(([n,q])=>({n,q}))
+      .filter(x=>x.q>0)
+      .sort((a,b)=>a.n.localeCompare(b.n))
+      .map(x=>`${x.q} x ${x.n}`);
+
+    cartPreview.textContent = arr.length ? arr.join("\n") : "(No items selected)";
+    totalQtyEl.textContent = Object.values(state.cart).reduce((a,b)=>a+b,0);
+  }
+
+  function renderOverview(){
+    overviewBox.textContent = buildOverviewText();
+  }
+
+  function renderAll(){
+    renderItems();
+    renderCart();
+    renderOverview();
+  }
+
+  document.getElementById('clearBtn').onclick=()=>{
+    state.cart = {};
+    noteEl.value = "";
+    statusEl.textContent = "";
+    statusEl.className = "danger";
+    renderAll();
+  };
+
+  document.getElementById('copyBtn').onclick = async () => {
+    const text = buildOverviewText();
+    try {
+      await navigator.clipboard.writeText(text);
+      statusEl.textContent = "Overview copied.";
+      statusEl.className = "ok";
+      setTimeout(()=>{statusEl.textContent=""; statusEl.className="danger";}, 1000);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      statusEl.textContent = "Overview copied.";
+      statusEl.className = "ok";
+      setTimeout(()=>{statusEl.textContent=""; statusEl.className="danger";}, 1000);
+    }
+  };
+
+  document.getElementById('fullscreenBtn').onclick = () => {
+    const wrap = overviewBox.parentElement;
+    if (!document.fullscreenElement) wrap.requestFullscreen?.();
+    else document.exitFullscreen?.();
+  };
+
+  // Send order (creates NEW)
+  document.getElementById('submitBtn').onclick=async()=>{
+    statusEl.className="danger";
+    if(!Object.keys(state.cart).length){statusEl.textContent="No items selected.";return;}
+    if(!mustHaveUrl_()){ statusEl.textContent="SCRIPT_URL is not set."; return; }
+
+    const payload = {
+      action: "create",
+      table: state.table,
+      items: Object.entries(state.cart).map(([name,qty])=>({name,qty})),
+      note: noteEl.value.trim()
+    };
+
+    try{
+      const r = await fetch(SCRIPT_URL, {
+        method:"POST",
+        headers:{"Content-Type":"text/plain;charset=utf-8"},
+        body: JSON.stringify(payload)
+      });
+      const j = await r.json();
+      if(!j.ok) throw new Error(j.error || "Unknown error");
+
+      state.cart = {};
+      noteEl.value = "";
+      renderAll();
+
+      statusEl.textContent="Order sent (NEW).";
+      statusEl.className="ok";
+      setTimeout(()=>{statusEl.textContent=""; statusEl.className="danger";}, 1200);
+
+      fetchOrders();
+    }catch(e){
+      statusEl.textContent="Send failed. Use Overview to copy/screenshot and send downstairs.";
+      statusEl.className="danger";
+    }
+  };
+
+  // Tabs
+  const tabNewBtn = document.getElementById('tabNew');
+  const tabKeyedBtn = document.getElementById('tabKeyed');
+
+  function setTab(t){
+    state.tab = t;
+    tabNewBtn.classList.toggle("active", t === "NEW");
+    tabKeyedBtn.classList.toggle("active", t === "KEYED_IN");
+    fetchOrders();
+  }
+  tabNewBtn.onclick = ()=>setTab("NEW");
+  tabKeyedBtn.onclick = ()=>setTab("KEYED_IN");
+
+  // Orders rendering
+  function parseItems(itemsJson){
+    try{
+      const arr = JSON.parse(itemsJson || "[]");
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .filter(x => x && x.name && x.qty)
+        .map(x => ({name:String(x.name), qty:Number(x.qty)||0}))
+        .filter(x => x.qty > 0);
+    }catch{ return []; }
+  }
+
+  function fmtTime(ts){
+    try{
+      const d = new Date(ts);
+      if (isNaN(d.getTime())) return String(ts);
+      return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    }catch{ return String(ts); }
+  }
+
+  async function setStatus(orderId, status){
+    if(!mustHaveUrl_()) return false;
+    const payload = { action: "set_status", orderId, status };
+    const r = await fetch(SCRIPT_URL, {
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify(payload)
+    });
+    const j = await r.json();
+    if(!j.ok) throw new Error(j.error || "set_status failed");
+    return true;
+  }
+
+  function escapeHtml(s){
+    return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function renderOrders(orders){
+    ordersWrap.innerHTML = "";
+    if (!orders.length){
+      ordersWrap.innerHTML = `<div class="ticket">(No orders)</div>`;
+      return;
+    }
+
+    orders.forEach(o=>{
+      const items = parseItems(o.itemsJson);
+      const lines = items.map(it => `${it.qty} x ${it.name}`).join("\n") || "(No items)";
+      const note = (o.note || "").toString().trim();
+
+      const div = document.createElement("div");
+      div.className = "ticket";
+
+      const isNew = (o.status === "NEW");
+      const primaryBtn = isNew
+        ? `<button data-id="${o.orderId}" data-next="KEYED_IN">Keyed In</button>`
+        : `<button data-id="${o.orderId}" data-next="NEW">Move back to New</button>`;
+
+      div.innerHTML = `
+        <div class="top">
+          <b>${escapeHtml(o.table || "-")}</b>
+          <span class="muted">${escapeHtml(fmtTime(o.ts))}</span>
+        </div>
+        <pre>${escapeHtml(lines)}</pre>
+        <div class="small"><b>Note:</b> ${note ? escapeHtml(note) : "-"}</div>
+        <div class="actions">
+          ${primaryBtn}
+          <span class="small muted">ID: ${escapeHtml(o.orderId || "")}</span>
+        </div>
+      `;
+
+      // attach button handler
+      const btn = div.querySelector("button[data-id]");
+      btn.onclick = async () => {
+        try{
+          btn.disabled = true;
+          await setStatus(btn.dataset.id, btn.dataset.next);
+          fetchOrders();
+        }catch(e){
+          btn.disabled = false;
+          alert("Status update failed: " + (e.message || e));
+        }
+      };
+
+      ordersWrap.appendChild(div);
+    });
+  }
+
+  async function fetchOrders(){
+    if(!mustHaveUrl_()){
+      liveStatus.textContent = "SCRIPT_URL not set.";
+      return;
+    }
+    liveStatus.textContent = "Refreshing…";
+    try{
+      const url = `${SCRIPT_URL}?status=${encodeURIComponent(state.tab)}`;
+      const r = await fetch(url, { method:"GET" });
+      const j = await r.json();
+      if(!j.ok) throw new Error(j.error || "GET failed");
+      renderOrders(Array.isArray(j.orders) ? j.orders : []);
+      liveStatus.textContent = `Updated: ${new Date().toLocaleTimeString()}`;
+    }catch(e){
+      liveStatus.textContent = "Refresh failed (check Apps Script deployment).";
+    }
+  }
+
+  document.getElementById('refreshBtn').onclick = fetchOrders;
+
+  // Auto refresh
+  setInterval(()=>{ if(autoChk.checked) fetchOrders(); }, 3000);
+
+  // End of day: clear all
+  document.getElementById('clearAllBtn').onclick = async () => {
+    if(!mustHaveUrl_()){ alert("SCRIPT_URL not set."); return; }
+    const key = prompt("Enter end-of-day clear key:");
+    if (!key) return;
+
+    if (!confirm("This will delete ALL orders (NEW and KEYED IN). Continue?")) return;
+
+    try{
+      const payload = { action: "clear_all", key };
+      const r = await fetch(SCRIPT_URL, {
+        method:"POST",
+        headers:{"Content-Type":"text/plain;charset=utf-8"},
+        body: JSON.stringify(payload)
+      });
+      const j = await r.json();
+      if(!j.ok) throw new Error(j.error || "clear_all failed");
+      fetchOrders();
+      alert("All records cleared.");
+    }catch(e){
+      alert("Clear failed: " + (e.message || e));
+    }
+  };
+
+  // Initial
+  renderAll();
+  fetchOrders();
+</script>
+</body>
+</html>
