@@ -203,8 +203,11 @@
   const autoChk = document.getElementById('autoChk');
 
   function mustHaveUrl_(){
-    return SCRIPT_URL && !SCRIPT_URL.includes("https://script.google.com/macros/s/AKfycbxzxwszj6lmX27GgSahiFcCTaH9bWQle7ovY3LNtUfTkV6wkY97EBaVZ3rSiDh8FDAX/exec");
-  }
+  return typeof SCRIPT_URL === "string"
+    && SCRIPT_URL.startsWith("https://script.google.com/macros/")
+    && SCRIPT_URL.endsWith("/exec");
+}
+
 
   // Tables 1..33
   for (let i=1;i<=33;i++){
@@ -541,5 +544,6 @@
 </script>
 </body>
 </html>
+
 
 
