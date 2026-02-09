@@ -84,6 +84,22 @@
   touch-action: manipulation; /* reduces double-tap zoom */
   }
 
+    .expandBtn{
+  width:44px;
+  height:40px;
+  border:1px solid #aaa;
+  border-radius:12px;
+  background:#fff;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+}
+.expandBtn svg{
+  width:24px;
+  height:24px;
+}
+
   </style>
 </head>
 <body>
@@ -127,7 +143,7 @@
       <div class="row" style="justify-content:space-between;">
         <div><b>Total items:</b> <span id="totalQty">0</span></div>
         <div class="row">
-          <button id="expandBtn" type="button">Expand</button>
+          <button id="expandBtn" class="expandBtn" type="button" aria-label="Expand cart"></button>
           <button id="submitBtn" type="button">Send Order</button>
         </div>
       </div>
@@ -662,10 +678,25 @@
 
   // cart expand/collapse
   function setCartExpanded_(on){
-    state.cartExpanded = !!on;
-    cartListWrap.classList.toggle("expanded", state.cartExpanded);
-    expandBtn.textContent = state.cartExpanded ? "Collapse" : "Expand";
+  state.cartExpanded = !!on;
+  cartListWrap.classList.toggle("expanded", state.cartExpanded);
+
+  // Wide chevrons (not letter V)
+  const downChevron = `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 9.5l8 8 8-8" fill="none" stroke="currentColor"
+        stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+  const upChevron = `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 14.5l8-8 8 8" fill="none" stroke="currentColor"
+        stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+
+  expandBtn.innerHTML = state.cartExpanded ? upChevron : downChevron;
+  expandBtn.setAttribute("aria-label", state.cartExpanded ? "Collapse cart" : "Expand cart");
   }
+
   expandBtn.onclick = ()=>setCartExpanded_(!state.cartExpanded);
 
   document.getElementById('clearBtn').onclick=()=>{
@@ -911,4 +942,5 @@ document.addEventListener('gestureend', function (e) {
 </script>
 </body>
 </html>
+
 
