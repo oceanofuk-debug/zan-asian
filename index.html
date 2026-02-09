@@ -19,7 +19,7 @@
     .qty span{min-width:26px; text-align:center; font-weight:700}
     .panel{border:1px solid #ddd; border-radius:10px; padding:10px; margin-top:14px}
     pre{white-space:pre-wrap; word-break:break-word; background:#f7f7f7; padding:10px; border-radius:10px; margin:10px 0 0}
-    .cart{position:sticky; bottom:0; background:#fff; border-top:2px solid #000; padding:10px 0; margin-top:18px}
+    .cart{position:sticky; bottom:0; background:#fff; border-top:2px solid #000; padding:10px 0; margin-top:18px; z-index:50}
     .danger{color:#b00020}
     .ok{color:#0b6b0b}
     .small{font-size:13px; opacity:.85}
@@ -33,15 +33,40 @@
     .muted{opacity:.75}
     .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
 
-    /* per-line cart notes */
+    /* cart lines */
     .cartLine{border:1px solid #ddd; border-radius:10px; padding:10px; margin-top:10px}
     .cartLineTop{display:flex; justify-content:space-between; align-items:center; gap:10px}
     .cartLineName{font-weight:700}
-    .cartLineMeta{font-size:13px; opacity:.85}
     .cartLineBtns{display:flex; gap:8px; align-items:center}
     .cartLineBtns button{width:44px; height:40px}
     .noteBox{width:100%; margin-top:8px}
     .noteBox textarea{width:100%; font-size:15px}
+
+    /* cart list container: collapsible */
+    .cartListWrap{
+      border-top:1px dashed #bbb;
+      margin-top:10px;
+      padding-top:10px;
+      overflow:auto;
+      max-height: 130px; /* ~1.3 items */
+    }
+    .cartListWrap.expanded{
+      max-height: 67vh;  /* expanded target */
+    }
+
+    /* top navigation */
+    .topNav{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-bottom:12px;
+      position:sticky;
+      top:0;
+      background:#fff;
+      padding:10px 0;
+      z-index:100;
+      border-bottom:1px solid #eee;
+    }
 
     /* modal */
     .modalBack{position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; padding:16px; z-index:9999}
@@ -52,74 +77,92 @@
     .modal button.primary{border:2px solid #000; font-weight:700}
     .modal .field{margin-top:10px}
     .modal label{display:block; font-size:13px; opacity:.85; margin-bottom:4px}
-    .modal select, .modal input{width:100%; padding:10px; border-radius:10px; border:1px solid #aaa}
+    .modal select{width:100%; padding:10px; border-radius:10px; border:1px solid #aaa}
     .modal .rowEnd{display:flex; justify-content:flex-end; gap:10px; margin-top:12px}
   </style>
 </head>
 <body>
-  <h1>Upstairs Ordering (Temporary)</h1>
 
-  <div class="row">
-    <label>Table:</label>
-    <select id="tableSel"></select>
-
-    <label>Category:</label>
-    <select id="catSel"></select>
-
-    <button id="clearBtn" type="button">Clear Current</button>
+  <!-- Main navigation -->
+  <div class="topNav">
+    <button id="navOrder" class="tabBtn active" type="button">Order</button>
+    <button id="navOrdered" class="tabBtn" type="button">Ordered</button>
   </div>
 
-  <div id="itemsWrap"></div>
+  <!-- PAGE: ORDER -->
+  <div id="pageOrder">
+    <h1>Upstairs Ordering (Temporary)</h1>
 
-  <!-- Overview / fallback -->
-  <div class="panel">
-    <div class="row" style="justify-content:space-between;">
-      <div><b>Overview (Fallback)</b> <span class="muted">— copy text or screenshot</span></div>
-      <div class="row">
-        <button id="copyBtn" type="button">Copy Text</button>
-        <button id="fullscreenBtn" type="button">Fullscreen</button>
+    <div class="row">
+      <label>Table:</label>
+      <select id="tableSel"></select>
+
+      <label>Category:</label>
+      <select id="catSel"></select>
+
+      <button id="clearBtn" type="button">Clear Current</button>
+    </div>
+
+    <div id="itemsWrap"></div>
+
+    <!-- Overview / fallback -->
+    <div class="panel">
+      <div class="row" style="justify-content:space-between;">
+        <div><b>Overview (Fallback)</b> <span class="muted">— copy text or screenshot</span></div>
+        <div class="row">
+          <button id="copyBtn" type="button">Copy Text</button>
+          <button id="fullscreenBtn" type="button">Fullscreen</button>
+        </div>
+      </div>
+      <pre id="overviewBox"></pre>
+    </div>
+
+    <!-- Cart -->
+    <div class="cart">
+      <div class="row" style="justify-content:space-between;">
+        <div><b>Total items:</b> <span id="totalQty">0</span></div>
+        <div class="row">
+          <button id="expandBtn" type="button">Expand</button>
+          <button id="submitBtn" type="button">Send Order</button>
+        </div>
+      </div>
+      <div id="status" class="danger" style="margin-top:6px;"></div>
+
+      <div id="cartListWrap" class="cartListWrap">
+        <div id="cartLines"></div>
       </div>
     </div>
-    <pre id="overviewBox"></pre>
   </div>
 
-  <!-- Orders view -->
-  <h2>Orders</h2>
-  <div class="tabs">
-    <button id="tabNew" class="tabBtn active" type="button">New Orders</button>
-    <button id="tabKeyed" class="tabBtn" type="button">Keyed In</button>
-  </div>
+  <!-- PAGE: ORDERED -->
+  <div id="pageOrdered" style="display:none;">
+    <h2>Ordered</h2>
 
-  <div class="row" style="margin-top:10px;">
-    <button id="refreshBtn" type="button">Refresh Now</button>
-    <label class="row" style="gap:6px;">
-      <input id="autoChk" type="checkbox" checked />
-      Auto-refresh
-    </label>
-    <span id="liveStatus" class="small"></span>
-  </div>
-
-  <div id="ordersWrap" class="orders" style="margin-top:10px;"></div>
-
-  <!-- End of day -->
-  <div class="panel">
-    <div class="row" style="justify-content:space-between;">
-      <div><b>End of Day</b> <span class="muted">— clears ALL records</span></div>
-      <button id="clearAllBtn" type="button">Clear All Records</button>
+    <!-- Sub navigation: New / Keyed In -->
+    <div class="tabs">
+      <button id="tabNew" class="tabBtn active" type="button">New</button>
+      <button id="tabKeyed" class="tabBtn" type="button">Keyed In</button>
     </div>
-    <div class="small">This requires a secret key. Use only when closing.</div>
-  </div>
 
-  <div class="cart">
-    <div class="row" style="justify-content:space-between;">
-      <div><b>Total items:</b> <span id="totalQty">0</span></div>
-      <button id="submitBtn" type="button">Send Order</button>
+    <div class="row" style="margin-top:10px;">
+      <button id="refreshBtn" type="button">Refresh Now</button>
+      <label class="row" style="gap:6px;">
+        <input id="autoChk" type="checkbox" checked />
+        Auto-refresh
+      </label>
+      <span id="liveStatus" class="small"></span>
     </div>
-    <div id="status" class="danger" style="margin-top:6px;"></div>
 
-    <div id="cartLines"></div>
+    <div id="ordersWrap" class="orders" style="margin-top:10px;"></div>
 
-    <pre id="cartPreview" style="display:none"></pre>
+    <!-- End of day -->
+    <div class="panel">
+      <div class="row" style="justify-content:space-between;">
+        <div><b>End of Day</b> <span class="muted">— clears ALL records</span></div>
+        <button id="clearAllBtn" type="button">Clear All Records</button>
+      </div>
+      <div class="small">This requires a secret key. Use only when closing.</div>
+    </div>
   </div>
 
   <!-- modal -->
@@ -135,7 +178,6 @@
   </div>
 
 <script>
-  // Paste your Apps Script Web App URL here:
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxzxwszj6lmX27GgSahiFcCTaH9bWQle7ovY3LNtUfTkV6wkY97EBaVZ3rSiDh8FDAX/exec";
 
   function mustHaveUrl_(){
@@ -144,127 +186,59 @@
       && SCRIPT_URL.endsWith("/exec");
   }
 
-  // --- FOOD MENU (names only) ---
+  // ---- FOOD MENU ----
   const FOOD_MENU = {
     "Starters": [
-      "Homemade Pandan Fried Chicken",
-      "Roti Prata",
-      "Penang Style Grilled Tofu",
-      "House Combo Bento",
-      "Veggie House Combo",
-      "House Special Deep Fried Skewer Set",
-      "Crispy Duck (1/4)",
-      "Crispy Duck (1/2)",
-      "Grilled Chicken Satay Skewers",
-      "Spring Roll (Veg)",
-      "Spring Roll (Meat)",
-      "Five-Spice Fried Roll",
-      "Gyoza (Chicken)",
-      "Gyoza (Veg)",
-      "Salt & Pepper Chicken",
-      "Crispy Garlic Ribs"
+      "Homemade Pandan Fried Chicken","Roti Prata","Penang Style Grilled Tofu","House Combo Bento",
+      "Veggie House Combo","House Special Deep Fried Skewer Set","Crispy Duck (1/4)","Crispy Duck (1/2)",
+      "Grilled Chicken Satay Skewers","Spring Roll (Veg)","Spring Roll (Meat)","Five-Spice Fried Roll",
+      "Gyoza (Chicken)","Gyoza (Veg)","Salt & Pepper Chicken","Crispy Garlic Ribs"
     ],
     "Malaysian Curries": [
-      "Rendang Beef Brisket",
-      "Malaysian Chicken Curry",
-      "Asam Curry (Chicken)",
-      "Asam Curry (Beef)",
-      "Asam Curry (Tofu)",
-      "Asam Curry (Prawn)",
-      "Nyonya Gulai Curry (Chicken)",
-      "Nyonya Gulai Curry (Beef)",
-      "Nyonya Gulai Curry (Tofu)",
-      "Nyonya Gulai Curry (Prawn)",
-      "Red Curry (Chicken)",
-      "Red Curry (Beef)",
-      "Red Curry (Tofu)",
-      "Red Curry (Prawn)"
+      "Rendang Beef Brisket","Malaysian Chicken Curry",
+      "Asam Curry (Chicken)","Asam Curry (Beef)","Asam Curry (Tofu)","Asam Curry (Prawn)",
+      "Nyonya Gulai Curry (Chicken)","Nyonya Gulai Curry (Beef)","Nyonya Gulai Curry (Tofu)","Nyonya Gulai Curry (Prawn)",
+      "Red Curry (Chicken)","Red Curry (Beef)","Red Curry (Tofu)","Red Curry (Prawn)"
     ],
     "Noodles": [
-      "Malaysian Curry Laksa (Chicken)",
-      "Malaysian Curry Laksa (Prawn)",
-      "Malay-Style Special Noodles",
-      "Malaysian Style Char Kuey Teow",
-      "Rojak Mee",
-      "Pad Malay",
-      "Wat Tan Hor Fun"
+      "Malaysian Curry Laksa (Chicken)","Malaysian Curry Laksa (Prawn)","Malay-Style Special Noodles",
+      "Malaysian Style Char Kuey Teow","Rojak Mee","Pad Malay","Wat Tan Hor Fun"
     ],
     "Asian Favourites": [
-      "Creamy Salted Egg (Crispy Chicken)",
-      "Creamy Salted Egg (King Prawn)",
-      "Kung Po (Beef)",
-      "Kung Po (Chicken)",
-      "Kung Po (King Prawn)",
-      "Black Pepper (Beef)",
-      "Black Pepper (Chicken)",
-      "Black Pepper (King Prawn)",
-      "Szechuan (Beef)",
-      "Szechuan (Chicken)",
-      "Szechuan (King Prawn)",
-      "Sambal Stir-Fried Morning Glory",
-      "Garlic Stir-Fried Morning Glory"
+      "Creamy Salted Egg (Crispy Chicken)","Creamy Salted Egg (King Prawn)",
+      "Kung Po (Beef)","Kung Po (Chicken)","Kung Po (King Prawn)",
+      "Black Pepper (Beef)","Black Pepper (Chicken)","Black Pepper (King Prawn)",
+      "Szechuan (Beef)","Szechuan (Chicken)","Szechuan (King Prawn)",
+      "Sambal Stir-Fried Morning Glory","Garlic Stir-Fried Morning Glory"
     ],
-    "Asian Salads": [
-      "Acar Salad",
-      "Rojak Salad"
-    ],
-    "Sizzling Platters": [
-      "Sambal Sizzling King Prawn",
-      "Sizzling Black Pepper Beef Tenderloin"
-    ],
+    "Asian Salads": ["Acar Salad","Rojak Salad"],
+    "Sizzling Platters": ["Sambal Sizzling King Prawn","Sizzling Black Pepper Beef Tenderloin"],
     "Rice Dishes": [
-      "Nasi Lemak (Fried Chicken)",
-      "Nasi Lemak (Beef Brisket)",
-      "Nasi Goreng Sambal Fried Rice",
-      "Hainanese Chicken Rice",
-      "Pineapple Fried Rice",
-      "Vegetable Fried Rice"
+      "Nasi Lemak (Fried Chicken)","Nasi Lemak (Beef Brisket)","Nasi Goreng Sambal Fried Rice",
+      "Hainanese Chicken Rice","Pineapple Fried Rice","Vegetable Fried Rice"
     ],
-    "Sides": [
-      "Coconut Rice",
-      "Fragrant Rice",
-      "Boiled Rice",
-      "Egg Fried Rice",
-      "Noodles",
-      "Chips"
-    ],
-    "Dessert": [
-      "Banana Fritter"
-    ]
+    "Sides": ["Coconut Rice","Fragrant Rice","Boiled Rice","Egg Fried Rice","Noodles","Chips"],
+    "Dessert": ["Banana Fritter"]
   };
 
-  // --- DRINKS MENU (from your photos) ---
-  // items use: type = "plain" | "wine" | "spirit"
-  // wine sizes: list of {label, price}
-  // spirit: basePrice per shot; shots selectable; optional mixer +£1 (choice list)
-  const MIXER_CHOICES = ["Lemonade", "Coke", "Diet Coke", "Tonic", "Slimline Tonic", "Fruit Juice"];
-
+  // ---- DRINKS MENU (from your photos) ----
+  const MIXER_CHOICES = ["Lemonade","Coke","Diet Coke","Tonic","Slimline Tonic","Fruit Juice"];
   const DRINKS_MENU = {
     "Drinks — White Wine": [
       { type:"wine", name:"Cuvée Duboeuf Blanc (Bouquet Label)", sizes:[ {label:"Bottle", price:27.95} ] },
-      { type:"wine", name:"Pinot Grigio delle Dolomiti (Trovati)", sizes:[
-        {label:"125ml", price:5.50},{label:"175ml", price:7.50},{label:"Bottle", price:28.95}
-      ]},
-      { type:"wine", name:"Fiddlehead Sauvignon Blanc", sizes:[
-        {label:"125ml", price:5.75},{label:"175ml", price:7.95},{label:"Bottle", price:29.95}
-      ]},
+      { type:"wine", name:"Pinot Grigio delle Dolomiti (Trovati)", sizes:[ {label:"125ml", price:5.50},{label:"175ml", price:7.50},{label:"Bottle", price:28.95} ] },
+      { type:"wine", name:"Fiddlehead Sauvignon Blanc", sizes:[ {label:"125ml", price:5.75},{label:"175ml", price:7.95},{label:"Bottle", price:29.95} ] },
       { type:"wine", name:"Sancerre (Domaine Cherrier)", sizes:[ {label:"Bottle", price:49.95} ] },
       { type:"wine", name:"Chablis 1er Cru (Vau de Vey, Brocard Organic)", sizes:[ {label:"Bottle", price:69.95} ] }
     ],
     "Drinks — Rosé Wine": [
-      { type:"wine", name:"Zinfandel Rosé (Beringer)", sizes:[
-        {label:"125ml", price:5.25},{label:"175ml", price:6.95},{label:"Bottle", price:27.95}
-      ]},
+      { type:"wine", name:"Zinfandel Rosé (Beringer)", sizes:[ {label:"125ml", price:5.25},{label:"175ml", price:6.95},{label:"Bottle", price:27.95} ] },
       { type:"wine", name:"Lady A (La Coste Provence Rosé)", sizes:[ {label:"Bottle", price:39.95} ] }
     ],
     "Drinks — Red Wine": [
       { type:"wine", name:"Cuvée Duboeuf Rouge (Bouquet Label)", sizes:[ {label:"Bottle", price:27.95} ] },
-      { type:"wine", name:"Merlot Reserva (Poco Mas)", sizes:[
-        {label:"125ml", price:5.50},{label:"175ml", price:7.50},{label:"Bottle", price:28.95}
-      ]},
-      { type:"wine", name:"Malbec Porteño (Norton)", sizes:[
-        {label:"125ml", price:5.75},{label:"175ml", price:7.95},{label:"Bottle", price:29.95}
-      ]},
+      { type:"wine", name:"Merlot Reserva (Poco Mas)", sizes:[ {label:"125ml", price:5.50},{label:"175ml", price:7.50},{label:"Bottle", price:28.95} ] },
+      { type:"wine", name:"Malbec Porteño (Norton)", sizes:[ {label:"125ml", price:5.75},{label:"175ml", price:7.95},{label:"Bottle", price:29.95} ] },
       { type:"wine", name:"Rioja Reserva (Conde Valdemar)", sizes:[ {label:"Bottle", price:44.95} ] },
       { type:"wine", name:"Château Chantalouette (Pomerol)", sizes:[ {label:"Bottle", price:79.95} ] }
     ],
@@ -323,16 +297,21 @@
     ]
   };
 
-  // Combined categories
   const MENU = { ...FOOD_MENU, ...DRINKS_MENU };
 
-  // cart lines: each line has its own note
   const state = {
-    table: "T1",
+    page: "ORDER",          // ORDER / ORDERED
+    table: "1",             // no T prefix
     cat: Object.keys(MENU)[0],
-    cartLines: [], // [{id, baseName, displayName, qty, note}]
-    tab: "NEW"
+    cartLines: [],          // [{id, baseName, displayName, qty, note}]
+    orderedTab: "NEW",      // NEW / KEYED_IN
+    cartExpanded: false
   };
+
+  const navOrderBtn = document.getElementById('navOrder');
+  const navOrderedBtn = document.getElementById('navOrdered');
+  const pageOrder = document.getElementById('pageOrder');
+  const pageOrdered = document.getElementById('pageOrdered');
 
   const tableSel = document.getElementById('tableSel');
   const catSel = document.getElementById('catSel');
@@ -341,11 +320,16 @@
   const statusEl = document.getElementById('status');
   const overviewBox = document.getElementById('overviewBox');
   const cartLinesEl = document.getElementById('cartLines');
+  const cartListWrap = document.getElementById('cartListWrap');
+  const expandBtn = document.getElementById('expandBtn');
+
   const ordersWrap = document.getElementById('ordersWrap');
   const liveStatus = document.getElementById('liveStatus');
   const autoChk = document.getElementById('autoChk');
+  const tabNewBtn = document.getElementById('tabNew');
+  const tabKeyedBtn = document.getElementById('tabKeyed');
 
-  // modal refs
+  // modal
   const modalBack = document.getElementById('modalBack');
   const modalTitle = document.getElementById('modalTitle');
   const modalBody = document.getElementById('modalBody');
@@ -353,6 +337,7 @@
   const modalOk = document.getElementById('modalOk');
 
   function uid_(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
+  function escapeHtml(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
   function openModal_(title, renderFn){
     return new Promise((resolve) => {
@@ -373,10 +358,23 @@
     });
   }
 
-  // Tables 1..33
+  function setPage_(p){
+    state.page = p;
+    navOrderBtn.classList.toggle("active", p==="ORDER");
+    navOrderedBtn.classList.toggle("active", p==="ORDERED");
+    pageOrder.style.display = (p==="ORDER") ? "" : "none";
+    pageOrdered.style.display = (p==="ORDERED") ? "" : "none";
+    if (p==="ORDERED") fetchOrders();
+  }
+
+  navOrderBtn.onclick = ()=>setPage_("ORDER");
+  navOrderedBtn.onclick = ()=>setPage_("ORDERED");
+
+  // Tables 1..33 (display without "T")
   for (let i=1;i<=33;i++){
     const o=document.createElement('option');
-    o.value=`T${i}`; o.textContent=`T${i}`;
+    o.value=String(i);
+    o.textContent=String(i);
     tableSel.appendChild(o);
   }
   tableSel.value = state.table;
@@ -391,17 +389,12 @@
   catSel.value = state.cat;
   catSel.onchange=()=>{state.cat=catSel.value;renderItems();};
 
-  function countBase_(baseName){
-    return state.cartLines.reduce((s,l)=> s + (l.baseName === baseName ? l.qty : 0), 0);
-  }
+  function totalQty_(){ return state.cartLines.reduce((s,l)=> s + (Number(l.qty)||0), 0); }
+  function countBase_(baseName){ return state.cartLines.reduce((s,l)=> s + (l.baseName===baseName ? l.qty : 0), 0); }
 
-  function addLine_(line){
-    state.cartLines.push(line);
-    renderAll();
-  }
+  function addLine_(line){ state.cartLines.push(line); renderAll(); }
 
   function removeOne_(baseName){
-    // remove 1 unit from last matching line
     for (let i = state.cartLines.length - 1; i >= 0; i--){
       const l = state.cartLines[i];
       if (l.baseName === baseName){
@@ -413,15 +406,27 @@
     renderAll();
   }
 
-  async function handleAdd_(cat, item){
-    // FOOD (string)
+  function findItemByName_(name){
+    for (const cat of Object.keys(MENU)){
+      const arr = MENU[cat] || [];
+      for (const it of arr){
+        if (typeof it === "string"){
+          if (it === name) return it;
+        } else if (it && it.name === name){
+          return it;
+        }
+      }
+    }
+    return null;
+  }
+
+  async function handleAdd_(item){
     if (typeof item === "string"){
       const baseName = item;
       addLine_({ id: uid_(), baseName, displayName: baseName, qty: 1, note: "" });
       return;
     }
 
-    // DRINKS (object)
     if (item.type === "plain"){
       const baseName = item.name;
       const disp = `${item.name} (£${item.price.toFixed(2)})`;
@@ -433,7 +438,6 @@
       const choice = await openModal_(`Select size — ${item.name}`, (root) => {
         const wrap = document.createElement("div");
         wrap.className = "btnGrid";
-
         let selected = item.sizes[0]?.label || "Bottle";
         item.sizes.forEach(s => {
           const b = document.createElement("button");
@@ -447,14 +451,11 @@
           if (s.label === selected) b.classList.add("primary");
           wrap.appendChild(b);
         });
-
         root.appendChild(wrap);
         return { get: ()=> selected };
       });
-
       if (!choice) return;
-
-      const s = item.sizes.find(x=>x.label === choice) || item.sizes[0];
+      const s = item.sizes.find(x=>x.label===choice) || item.sizes[0];
       const baseName = item.name;
       const disp = `${item.name} — ${s.label} (£${Number(s.price).toFixed(2)})`;
       addLine_({ id: uid_(), baseName, displayName: disp, qty: 1, note: "" });
@@ -490,30 +491,22 @@
           o.textContent = m;
           mixerSel.appendChild(o);
         });
-
         mixerField.appendChild(mixerSel);
 
         root.appendChild(shotsField);
         root.appendChild(mixerField);
 
-        return {
-          get: ()=> ({
-            shots: Number(shotsSel.value || "1") || 1,
-            mixer: mixerSel.value || ""
-          })
-        };
+        return { get: ()=>({ shots:Number(shotsSel.value||"1")||1, mixer:mixerSel.value||"" }) };
       });
-
       if (!res) return;
 
       const shots = Math.max(1, Math.min(6, Number(res.shots)||1));
       const mixer = res.mixer || "";
       const mixerText = mixer ? ` + Mixer: ${mixer} (+£1)` : "";
-      const baseName = item.name;
-
       const price = item.basePrice * shots + (mixer ? 1 : 0);
-      const disp = `${item.name} — ${shots} shot${shots>1?"s":""}${mixerText} (£${price.toFixed(2)})`;
 
+      const baseName = item.name;
+      const disp = `${item.name} — ${shots} shot${shots>1?"s":""}${mixerText} (£${price.toFixed(2)})`;
       addLine_({ id: uid_(), baseName, displayName: disp, qty: 1, note: "" });
       return;
     }
@@ -554,7 +547,7 @@
       const plus=document.createElement('button');
       plus.type="button";
       plus.textContent="+";
-      plus.onclick=()=>handleAdd_(state.cat, item);
+      plus.onclick=()=>handleAdd_(item);
 
       right.append(minus, mid, plus);
       d.append(left, right);
@@ -564,24 +557,19 @@
     itemsWrap.appendChild(g);
   }
 
-  function totalQty_(){
-    return state.cartLines.reduce((s,l)=> s + (Number(l.qty)||0), 0);
-  }
-
-  function buildOverviewText() {
+  function buildOverviewText(){
     const lines = [];
     lines.push(`TABLE: ${state.table}`);
     lines.push(`TOTAL: ${totalQty_()}`);
     lines.push(`TIME: ${new Date().toLocaleString()}`);
     lines.push("");
-
     if (!state.cartLines.length){
       lines.push("(No items selected)");
     } else {
-      state.cartLines.forEach(l => {
+      state.cartLines.forEach(l=>{
         lines.push(`${l.qty} x ${l.displayName}`);
-        const note = (l.note || "").trim();
-        if (note) lines.push(`  - NOTE: ${note}`);
+        const n = (l.note||"").trim();
+        if (n) lines.push(`  - NOTE: ${n}`);
       });
     }
     return lines.join("\n");
@@ -597,7 +585,6 @@
 
       const top = document.createElement("div");
       top.className = "cartLineTop";
-
       const left = document.createElement("div");
       left.innerHTML = `<div class="cartLineName">${escapeHtml(l.displayName)}</div>`;
 
@@ -605,8 +592,7 @@
       btns.className = "cartLineBtns";
 
       const minus = document.createElement("button");
-      minus.type="button";
-      minus.textContent="−";
+      minus.type="button"; minus.textContent="−";
       minus.onclick=()=>{
         if (l.qty > 1) l.qty -= 1;
         else state.cartLines.splice(idx,1);
@@ -620,29 +606,16 @@
       mid.textContent = l.qty;
 
       const plus = document.createElement("button");
-      plus.type="button";
-      plus.textContent="+";
-      // for wines/spirits/plain drinks, adding again should create a NEW line (as requested for different size choices)
-      // so always add new line by re-triggering handleAdd using baseName lookup:
+      plus.type="button"; plus.textContent="+";
       plus.onclick=()=>{
-        // find original item in MENU for this baseName in current category OR anywhere
         const itemObj = findItemByName_(l.baseName);
-        if (itemObj){
-          handleAdd_(state.cat, itemObj);
-        } else {
-          // fallback: just increment qty
-          l.qty += 1;
-          renderAll();
-        }
+        if (itemObj) handleAdd_(itemObj);  // wines/spirits will prompt again -> new line
+        else { l.qty += 1; renderAll(); }
       };
 
       const del = document.createElement("button");
-      del.type="button";
-      del.textContent="×";
-      del.onclick=()=>{
-        state.cartLines.splice(idx,1);
-        renderAll();
-      };
+      del.type="button"; del.textContent="×";
+      del.onclick=()=>{ state.cartLines.splice(idx,1); renderAll(); };
 
       btns.append(minus, mid, plus, del);
       top.append(left, btns);
@@ -661,33 +634,16 @@
     });
   }
 
-  function renderOverview(){
-    overviewBox.textContent = buildOverviewText();
-  }
+  function renderOverview(){ overviewBox.textContent = buildOverviewText(); }
+  function renderAll(){ renderItems(); renderCart(); renderOverview(); }
 
-  function renderAll(){
-    renderItems();
-    renderCart();
-    renderOverview();
+  // cart expand/collapse
+  function setCartExpanded_(on){
+    state.cartExpanded = !!on;
+    cartListWrap.classList.toggle("expanded", state.cartExpanded);
+    expandBtn.textContent = state.cartExpanded ? "Collapse" : "Expand";
   }
-
-  function escapeHtml(s){
-    return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-  }
-
-  function findItemByName_(name){
-    for (const cat of Object.keys(MENU)){
-      const arr = MENU[cat] || [];
-      for (const it of arr){
-        if (typeof it === "string"){
-          if (it === name) return it;
-        } else if (it && it.name === name){
-          return it;
-        }
-      }
-    }
-    return null;
-  }
+  expandBtn.onclick = ()=>setCartExpanded_(!state.cartExpanded);
 
   document.getElementById('clearBtn').onclick=()=>{
     state.cartLines = [];
@@ -728,14 +684,13 @@
     if(!state.cartLines.length){statusEl.textContent="No items selected.";return;}
     if(!mustHaveUrl_()){ statusEl.textContent="SCRIPT_URL is not set."; return; }
 
-    // backend expects items: [{name, qty}] - we include note per item line
     const items = state.cartLines.map(l => ({
-      name: l.displayName,     // keep size/shot/mixer in name for clarity downstairs
+      name: l.displayName,
       qty: l.qty,
       note: (l.note || "").trim()
     }));
 
-    const payload = { action: "create", table: state.table, items, note: "" };
+    const payload = { action:"create", table: state.table, items, note:"" };
 
     try{
       const r = await fetch(SCRIPT_URL, {
@@ -753,6 +708,8 @@
       statusEl.className="ok";
       setTimeout(()=>{statusEl.textContent=""; statusEl.className="danger";}, 1200);
 
+      // optional: switch to Ordered tab after send
+      // setPage_("ORDERED");
       fetchOrders();
     }catch(e){
       statusEl.textContent="Send failed. Use Overview to copy/screenshot and send downstairs.";
@@ -760,18 +717,15 @@
     }
   };
 
-  // Tabs
-  const tabNewBtn = document.getElementById('tabNew');
-  const tabKeyedBtn = document.getElementById('tabKeyed');
-
-  function setTab(t){
-    state.tab = t;
-    tabNewBtn.classList.toggle("active", t === "NEW");
-    tabKeyedBtn.classList.toggle("active", t === "KEYED_IN");
+  // Ordered tabs (New/Keyed In)
+  function setOrderedTab_(t){
+    state.orderedTab = t;
+    tabNewBtn.classList.toggle("active", t==="NEW");
+    tabKeyedBtn.classList.toggle("active", t==="KEYED_IN");
     fetchOrders();
   }
-  tabNewBtn.onclick = ()=>setTab("NEW");
-  tabKeyedBtn.onclick = ()=>setTab("KEYED_IN");
+  tabNewBtn.onclick = ()=>setOrderedTab_("NEW");
+  tabKeyedBtn.onclick = ()=>setOrderedTab_("KEYED_IN");
 
   function parseItems(itemsJson){
     try{
@@ -794,7 +748,7 @@
 
   async function setStatus(orderId, status){
     if(!mustHaveUrl_()) return false;
-    const payload = { action: "set_status", orderId, status };
+    const payload = { action:"set_status", orderId, status };
     const r = await fetch(SCRIPT_URL, {
       method:"POST",
       headers:{"Content-Type":"text/plain;charset=utf-8"},
@@ -840,6 +794,8 @@
         </div>
       `;
 
+;
+
       const btn = div.querySelector("button[data-id]");
       btn.onclick = async () => {
         try{
@@ -863,7 +819,7 @@
     }
     liveStatus.textContent = "Refreshing…";
     try{
-      const url = `${SCRIPT_URL}?status=${encodeURIComponent(state.tab)}`;
+      const url = `${SCRIPT_URL}?status=${encodeURIComponent(state.orderedTab)}`;
       const r = await fetch(url, { method:"GET" });
       const j = await r.json();
       if(!j.ok) throw new Error(j.error || "GET failed");
@@ -876,8 +832,10 @@
 
   document.getElementById('refreshBtn').onclick = fetchOrders;
 
-  // Auto refresh
-  setInterval(()=>{ if(autoChk.checked) fetchOrders(); }, 3000);
+  // Auto refresh (only when Ordered page visible)
+  setInterval(()=>{
+    if (state.page === "ORDERED" && autoChk.checked) fetchOrders();
+  }, 3000);
 
   // End of day: clear all
   document.getElementById('clearAllBtn').onclick = async () => {
@@ -888,7 +846,7 @@
     if (!confirm("This will delete ALL orders (NEW and KEYED IN). Continue?")) return;
 
     try{
-      const payload = { action: "clear_all", key };
+      const payload = { action:"clear_all", key };
       const r = await fetch(SCRIPT_URL, {
         method:"POST",
         headers:{"Content-Type":"text/plain;charset=utf-8"},
@@ -904,6 +862,7 @@
   };
 
   // Initial
+  setCartExpanded_(false);
   renderAll();
   fetchOrders();
 </script>
