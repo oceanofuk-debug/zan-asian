@@ -211,36 +211,7 @@
       background:#fff;
       display:none;
     }
-/* ===== hard stop horizontal overflow ===== */
-html, body{
-  max-width: 100%;
-  overflow-x: hidden;
-}
 
-*, *::before, *::after{
-  box-sizing: border-box;
-}
-
-.row > *{
-  min-width: 0; /* IMPORTANT for flex children (input/select/pre etc.) */
-}
-
-input, select, textarea, button{
-  max-width: 100%;
-}
-
-#searchBox{
-  width: 100%;
-  min-width: 0;
-}
-
-pre{
-  max-width: 100%;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  overflow-x: hidden;
-}
 /* disable sticky header/footer: make them scroll normally */
 .topNav{
   position: static !important;
@@ -1276,6 +1247,7 @@ async function fetchOrders(opts){
 </script>
 </body>
 </html>
+
 
 
 
