@@ -519,17 +519,18 @@
   }
 
   function setPage_(p){
-    state.page = p;
-    navOrderBtn.classList.toggle("active", p==="ORDER");
-    navOrderedBtn.classList.toggle("active", p==="ORDERED");
-    pageOrder.style.display = (p==="ORDER") ? "" : "none";
-    pageOrdered.style.display = (p==="ORDERED") ? "" : "none";
-    if (p==="ORDERED") {
-      // immediate feedback then fetch
-      liveStatus.textContent = "Loading…";
-      fetchOrders();
-    }
+  state.page = p;
+  navOrderBtn.classList.toggle("active", p==="ORDER");
+  navOrderedBtn.classList.toggle("active", p==="ORDERED");
+  pageOrder.style.display = (p==="ORDER") ? "" : "none";
+  pageOrdered.style.display = (p==="ORDERED") ? "" : "none";
+
+  if (p==="ORDERED") {
+    liveStatus.textContent = "Refreshing…";
+    fetchOrders({ force:true }); // 只有用戶切頁先 force
   }
+}
+
 
   navOrderBtn.onclick = ()=>setPage_("ORDER");
   navOrderedBtn.onclick = ()=>setPage_("ORDERED");
@@ -965,16 +966,14 @@
 
   // Ordered tabs (New/Keyed In) — immediate feedback then update
   function setOrderedTab_(t){
-    state.orderedTab = t;
-    tabNewBtn.classList.toggle("active", t==="NEW");
-    tabKeyedBtn.classList.toggle("active", t==="KEYED_IN");
+  state.orderedTab = t;
+  tabNewBtn.classList.toggle("active", t==="NEW");
+  tabKeyedBtn.classList.toggle("active", t==="KEYED_IN");
 
-    // instant feedback (UI first)
-    liveStatus.textContent = "Loading…";
-    ordersWrap.innerHTML = `<div class="ticket">(Loading…)</div>`;
+  liveStatus.textContent = "Refreshing…";
+  fetchOrders({ force:true }); // 只有切 tab 先 force
+}
 
-    fetchOrders();
-  }
   tabNewBtn.onclick = ()=>setOrderedTab_("NEW");
   tabKeyedBtn.onclick = ()=>setOrderedTab_("KEYED_IN");
 
@@ -1132,52 +1131,65 @@
 
   // stable "instant" refresh: abort previous + ignore stale
   let fetching = false;
-  let fetchCtrl = null;
-  let fetchSeq = 0;
+let fetchCtrl = null;
+let fetchSeq = 0;
 
-  async function fetchOrders(){
-    if(!mustHaveUrl_()){
-      liveStatus.textContent = "SCRIPT_URL not set.";
-      return;
-    }
+async function fetchOrders(opts){
+  const o = opts || {};
+  const force = !!o.force;
 
-    // if already fetching, cancel and replace (for fast tab switching)
-    if (fetching){
-      try{ fetchCtrl?.abort(); }catch{}
-    }
-
-    fetchCtrl = new AbortController();
-    const mySeq = ++fetchSeq;
-    fetching = true;
-
-    // keep latest tab visible immediately; actual render on return
-    liveStatus.textContent = "Refreshing…";
-
-    try{
-      const url = `${SCRIPT_URL}?status=${encodeURIComponent(state.orderedTab)}`;
-      const r = await fetch(url, { method:"GET", cache:"no-store", signal: fetchCtrl.signal });
-      const j = await r.json();
-      if (mySeq !== fetchSeq) return; // stale response
-      if(!j.ok) throw new Error(j.error || "GET failed");
-      renderOrders(Array.isArray(j.orders) ? j.orders : []);
-      liveStatus.textContent = `Updated: ${new Date().toLocaleTimeString()}`;
-    }catch(e){
-      if (e && e.name === "AbortError") {
-        // normal when user switches tabs quickly
-      } else {
-        liveStatus.textContent = "Refresh failed (check Apps Script deployment).";
-      }
-    }finally{
-      if (mySeq === fetchSeq) fetching = false;
-    }
+  if(!mustHaveUrl_()){
+    liveStatus.textContent = "SCRIPT_URL not set.";
+    return;
   }
 
-  document.getElementById('refreshBtn').onclick = fetchOrders;
+  // Auto-refresh: 如果仲 fetch 緊就 skip，唔好 abort（避免永遠 loading）
+  if (fetching && !force) return;
+
+  // Force refresh（切頁/切tab/手動refresh）先 abort 舊 request
+  if (force && fetching){
+    try { fetchCtrl?.abort(); } catch {}
+  }
+
+  fetchCtrl = new AbortController();
+  const mySeq = ++fetchSeq;
+  fetching = true;
+
+  try{
+    const url = `${SCRIPT_URL}?status=${encodeURIComponent(state.orderedTab)}&t=${Date.now()}`;
+    const r = await fetch(url, {
+      method:"GET",
+      cache:"no-store",
+      signal: fetchCtrl.signal
+    });
+
+    const j = await r.json();
+
+    // 如果係舊 request（被新一次 refresh 取代），直接唔處理
+    if (mySeq !== fetchSeq) return;
+
+    if(!j.ok) throw new Error(j.error || "GET failed");
+
+    renderOrders(Array.isArray(j.orders) ? j.orders : []);
+    liveStatus.textContent = `Updated: ${new Date().toLocaleTimeString()}`;
+
+  }catch(e){
+    // abort 係正常情況（force refresh）
+    if (e && e.name === "AbortError") return;
+    if (mySeq !== fetchSeq) return;
+    liveStatus.textContent = "Refresh failed (check Apps Script deployment).";
+  }finally{
+    // 只清除「最新嗰次」嘅 fetching 狀態
+    if (mySeq === fetchSeq) fetching = false;
+  }
+}
+
+  document.getElementById('refreshBtn').onclick = ()=>fetchOrders({ force:true });
 
   // auto refresh interval => 1 second (only on Ordered page)
-  setInterval(()=>{
-    if (state.page === "ORDERED") fetchOrders();
-  }, 1000);
+ setInterval(()=>{
+  if (state.page === "ORDERED") fetchOrders({ force:false });
+}, 1000);
 
   // End of day: clear all
   document.getElementById('clearAllBtn').onclick = async () => {
@@ -1223,3 +1235,4 @@
 </script>
 </body>
 </html>
+
