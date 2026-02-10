@@ -27,11 +27,11 @@
     .tabBtn{padding:8px 12px; border:1px solid #aaa; border-radius:999px; background:#fff}
     .tabBtn.active{border:2px solid #000; font-weight:700}
     .orders{display:grid; grid-template-columns:1fr; gap:10px}
-    .ticket{border:1px solid #ddd; border-radius:10px; padding:10px}
+    .ticket{border:1px solid #ddd; border-radius:10px; padding:10px; position:relative}
     .ticket .top{display:flex; justify-content:space-between; gap:10px; align-items:baseline}
     .ticket .top b{font-size:16px}
     .muted{opacity:.75}
-    .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
+    .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:center}
 
     /* cart lines */
     .cartLine{border:1px solid #ddd; border-radius:10px; padding:10px; margin-top:10px}
@@ -58,7 +58,7 @@
     .topNav{
       display:flex;
       gap:10px;
-      flex-wrap:wrap;
+      flex-wrap:nowrap;
       margin-bottom:12px;
       position:sticky;
       top:0;
@@ -66,6 +66,11 @@
       padding:10px 0;
       z-index:100;
       border-bottom:1px solid #eee;
+    }
+    .topNav .tabBtn{
+      flex:1 1 50%;
+      width:50%;
+      justify-content:center;
     }
 
     /* modal */
@@ -80,26 +85,79 @@
     .modal select{width:100%; padding:10px; border-radius:10px; border:1px solid #aaa}
     .modal .rowEnd{display:flex; justify-content:flex-end; gap:10px; margin-top:12px}
 
-    html, body {
-  touch-action: manipulation; /* reduces double-tap zoom */
-  }
+    html, body { touch-action: manipulation; }
 
     .expandBtn{
-  width:44px;
-  height:40px;
-  border:1px solid #aaa;
-  border-radius:12px;
-  background:#fff;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:0;
-}
-.expandBtn svg{
-  width:24px;
-  height:24px;
-}
+      width:44px;
+      height:40px;
+      border:1px solid #aaa;
+      border-radius:12px;
+      background:#fff;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:0;
+    }
+    .expandBtn svg{ width:24px; height:24px; }
 
+    /* ORDER UI tweaks */
+    #tableSel{ padding:10px 12px; height:46px; border-radius:12px; border:1px solid #aaa; }
+    #catSel{ padding:10px 12px; height:46px; border-radius:12px; border:1px solid #aaa; }
+    #searchBox{ padding:10px 12px; height:46px; border-radius:12px; border:1px solid #aaa; flex:1 1 220px; }
+    .nameBtn{
+      width:100%;
+      text-align:left;
+      padding:12px 12px;
+      border:1px solid #aaa;
+      border-radius:12px;
+      background:#fff;
+      font-weight:600;
+      cursor:pointer;
+    }
+    .nameBtn:active{ transform: translateY(1px); }
+
+    /* ORDERED UI tweaks */
+    .orderSepLine{ color:#666; } /* used inside <pre> */
+    .kebabBtn{
+      position:absolute;
+      right:10px;
+      bottom:10px;
+      width:38px;
+      height:34px;
+      border:1px solid #aaa;
+      border-radius:10px;
+      background:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:0;
+    }
+    .kebabDots{ display:flex; gap:4px; align-items:center; justify-content:center; }
+    .kebabDots span{ width:4px; height:4px; border-radius:999px; background:#111; display:inline-block; opacity:.85; }
+
+    .kebabMenu{
+      position:absolute;
+      right:10px;
+      bottom:52px;
+      border:1px solid #aaa;
+      border-radius:12px;
+      background:#fff;
+      overflow:hidden;
+      display:none;
+      min-width:150px;
+      z-index:10;
+    }
+    .kebabMenu button{
+      width:100%;
+      text-align:left;
+      padding:10px 12px;
+      border:0;
+      border-bottom:1px solid #eee;
+      background:#fff;
+      font-size:15px;
+    }
+    .kebabMenu button:last-child{ border-bottom:0; }
+    .kebabMenu button.dangerBtn{ color:#b00020; }
   </style>
 </head>
 <body>
@@ -118,8 +176,11 @@
       <label>Table:</label>
       <select id="tableSel"></select>
 
-      <label>Category:</label>
+      <!-- removed "Category:" text label, keep function -->
       <select id="catSel"></select>
+
+      <!-- new search next to category -->
+      <input id="searchBox" type="text" placeholder="Search items..." inputmode="search" />
 
       <button id="clearBtn" type="button">Clear Current</button>
     </div>
@@ -167,10 +228,6 @@
 
     <div class="row" style="margin-top:10px;">
       <button id="refreshBtn" type="button">Refresh Now</button>
-      <label class="row" style="gap:6px;">
-        <input id="autoChk" type="checkbox" checked />
-        Auto-refresh
-      </label>
       <span id="liveStatus" class="small"></span>
     </div>
 
@@ -242,7 +299,7 @@
     "Dessert": ["Banana Fritter"]
   };
 
-  // ---- DRINKS MENU (from your photos) ----
+  // ---- DRINKS MENU ----
   const MIXER_CHOICES = ["Lemonade","Coke","Diet Coke","Tonic","Slimline Tonic","Fruit Juice"];
   const DRINKS_MENU = {
     "Drinks — White Wine": [
@@ -321,12 +378,13 @@
   const MENU = { ...FOOD_MENU, ...DRINKS_MENU };
 
   const state = {
-    page: "ORDER",          // ORDER / ORDERED
-    table: "1",             // no T prefix
+    page: "ORDER",
+    table: "1",
     cat: Object.keys(MENU)[0],
-    cartLines: [],          // [{id, baseName, displayName, qty, note}]
-    orderedTab: "NEW",      // NEW / KEYED_IN
-    cartExpanded: false
+    cartLines: [],
+    orderedTab: "NEW",
+    cartExpanded: false,
+    search: ""
   };
 
   const navOrderBtn = document.getElementById('navOrder');
@@ -336,6 +394,7 @@
 
   const tableSel = document.getElementById('tableSel');
   const catSel = document.getElementById('catSel');
+  const searchBox = document.getElementById('searchBox');
   const itemsWrap = document.getElementById('itemsWrap');
   const totalQtyEl = document.getElementById('totalQty');
   const statusEl = document.getElementById('status');
@@ -346,7 +405,6 @@
 
   const ordersWrap = document.getElementById('ordersWrap');
   const liveStatus = document.getElementById('liveStatus');
-  const autoChk = document.getElementById('autoChk');
   const tabNewBtn = document.getElementById('tabNew');
   const tabKeyedBtn = document.getElementById('tabKeyed');
 
@@ -385,7 +443,7 @@
     navOrderedBtn.classList.toggle("active", p==="ORDERED");
     pageOrder.style.display = (p==="ORDER") ? "" : "none";
     pageOrdered.style.display = (p==="ORDERED") ? "" : "none";
-    if (p==="ORDERED") fetchOrders();
+    if (p==="ORDERED") fetchOrders(); /* (2) switch to Ordered => immediate pull */
   }
 
   navOrderBtn.onclick = ()=>setPage_("ORDER");
@@ -408,16 +466,21 @@
     catSel.appendChild(o);
   });
   catSel.value = state.cat;
-  catSel.onchange=()=>{state.cat=catSel.value;renderItems();};
+  catSel.onchange=()=>{state.cat=catSel.value; renderItems();};
+
+  // Search
+  searchBox.oninput = ()=>{
+    state.search = String(searchBox.value || "").trim();
+    renderItems();
+  };
 
   function totalQty_(){ return state.cartLines.reduce((s,l)=> s + (Number(l.qty)||0), 0); }
   function countBase_(baseName){ return state.cartLines.reduce((s,l)=> s + (l.baseName===baseName ? l.qty : 0), 0); }
 
   function addLine_(line){
-  state.cartLines.push(line);
-  renderAll();
-  // after DOM updated
-  setTimeout(scrollCartToBottom_, 0);
+    state.cartLines.push(line);
+    renderAll();
+    setTimeout(scrollCartToBottom_, 0); /* (Total items) auto-scroll to bottom on add */
   }
 
   function removeOne_(baseName){
@@ -528,11 +591,11 @@
 
       const shots = Math.max(1, Math.min(6, Number(res.shots)||1));
       const mixer = res.mixer || "";
-      const mixerText = mixer ? ` + Mixer: ${mixer} (+£1)` : "";
-      const price = item.basePrice * shots + (mixer ? 1 : 0);
 
+      /* spirits: remove price display, show as e.g. "Gin - 1 shot + Diet Coke" */
       const baseName = item.name;
-      const disp = `${item.name} — ${shots} shot${shots>1?"s":""}${mixerText} (£${price.toFixed(2)})`;
+      const shotText = `${shots} shot${shots>1?"s":""}`;
+      const disp = `${item.name} - ${shotText}${mixer ? " + " + mixer : ""}`;
       addLine_({ id: uid_(), baseName, displayName: disp, qty: 1, note: "" });
       return;
     }
@@ -540,42 +603,93 @@
 
   function renderItems(){
     itemsWrap.innerHTML = "";
+
+    const q = String(state.search || "").trim().toLowerCase();
+    const usingSearch = q.length > 0;
+
     const title = document.createElement('div');
     title.className = "cat";
-    title.textContent = state.cat;
+    title.textContent = usingSearch ? `Search results: "${state.search}"` : state.cat;
     itemsWrap.appendChild(title);
 
     const g=document.createElement('div');
     g.className="grid";
 
-    const list = MENU[state.cat] || [];
+    let list = [];
+
+    if (!usingSearch){
+      list = MENU[state.cat] || [];
+    } else {
+      // Search across all categories; show matching items under current view
+      const out = [];
+      for (const cat of Object.keys(MENU)){
+        const arr = MENU[cat] || [];
+        for (const it of arr){
+          const name = (typeof it === "string") ? it : it.name;
+          if (String(name).toLowerCase().includes(q)) out.push(it);
+        }
+      }
+      // de-dup by name
+      const seen = new Set();
+      list = out.filter(it => {
+        const name = (typeof it === "string") ? it : it.name;
+        if (seen.has(name)) return false;
+        seen.add(name);
+        return true;
+      }).slice(0, 40);
+    }
+
+    if (!list.length){
+      const empty = document.createElement("div");
+      empty.className = "item";
+      empty.textContent = "(No items)";
+      g.appendChild(empty);
+      itemsWrap.appendChild(g);
+      return;
+    }
+
     list.forEach(item=>{
       const baseName = (typeof item === "string") ? item : item.name;
+      const count = countBase_(baseName);
 
       const d=document.createElement('div');
       d.className="item";
 
       const left=document.createElement('div');
       left.className="name";
-      left.textContent = (typeof item === "string") ? item : item.name;
 
       const right=document.createElement('div');
       right.className="qty";
 
-      const minus=document.createElement('button');
-      minus.type="button";
-      minus.textContent="−";
-      minus.onclick=()=>removeOne_(baseName);
+      /* (Order tab UI) name itself as button.
+         qty controls hidden until item selected (count>0). */
+      const nameBtn = document.createElement('button');
+      nameBtn.type="button";
+      nameBtn.className="nameBtn";
+      nameBtn.textContent = (typeof item === "string") ? item : item.name;
+      nameBtn.onclick = ()=>handleAdd_(item);
 
-      const mid=document.createElement('span');
-      mid.textContent = countBase_(baseName);
+      left.appendChild(nameBtn);
 
-      const plus=document.createElement('button');
-      plus.type="button";
-      plus.textContent="+";
-      plus.onclick=()=>handleAdd_(item);
+      if (count > 0){
+        const minus=document.createElement('button');
+        minus.type="button";
+        minus.textContent="−";
+        minus.onclick=()=>removeOne_(baseName);
 
-      right.append(minus, mid, plus);
+        const mid=document.createElement('span');
+        mid.textContent = count;
+
+        const plus=document.createElement('button');
+        plus.type="button";
+        plus.textContent="+";
+        plus.onclick=()=>handleAdd_(item);
+
+        right.append(minus, mid, plus);
+      } else {
+        right.style.display = "none";
+      }
+
       d.append(left, right);
       g.appendChild(d);
     });
@@ -602,10 +716,7 @@
   }
 
   function scrollCartToBottom_(){
-  // only auto-scroll when cart is visible on Order page
-  try{
-    cartListWrap.scrollTop = cartListWrap.scrollHeight;
-  }catch{}
+    try{ cartListWrap.scrollTop = cartListWrap.scrollHeight; }catch{}
   }
 
   function renderCart(){
@@ -641,16 +752,15 @@
       const plus = document.createElement("button");
       plus.type="button"; plus.textContent="+";
       plus.onclick=()=>{
-  const itemObj = findItemByName_(l.baseName);
-  if (itemObj) {
-    handleAdd_(itemObj); // wines/spirits -> new line -> will auto scroll via addLine_
-  } else {
-    l.qty += 1;
-    renderAll();
-    setTimeout(scrollCartToBottom_, 0);
-  }
-  };
-
+        const itemObj = findItemByName_(l.baseName);
+        if (itemObj) {
+          handleAdd_(itemObj);
+        } else {
+          l.qty += 1;
+          renderAll();
+          setTimeout(scrollCartToBottom_, 0);
+        }
+      };
 
       const del = document.createElement("button");
       del.type="button"; del.textContent="×";
@@ -676,25 +786,24 @@
   function renderOverview(){ overviewBox.textContent = buildOverviewText(); }
   function renderAll(){ renderItems(); renderCart(); renderOverview(); }
 
-  // cart expand/collapse
+  // cart expand/collapse (icons only)
   function setCartExpanded_(on){
-  state.cartExpanded = !!on;
-  cartListWrap.classList.toggle("expanded", state.cartExpanded);
+    state.cartExpanded = !!on;
+    cartListWrap.classList.toggle("expanded", state.cartExpanded);
 
-  // Wide chevrons (not letter V)
-  const downChevron = `
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M4 9.5l8 8 8-8" fill="none" stroke="currentColor"
-        stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>`;
-  const upChevron = `
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M4 14.5l8-8 8 8" fill="none" stroke="currentColor"
-        stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>`;
+    const downChevron = `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 9.5l8 8 8-8" fill="none" stroke="currentColor"
+          stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+    const upChevron = `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 14.5l8-8 8 8" fill="none" stroke="currentColor"
+          stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
 
-  expandBtn.innerHTML = state.cartExpanded ? upChevron : downChevron;
-  expandBtn.setAttribute("aria-label", state.cartExpanded ? "Collapse cart" : "Expand cart");
+    expandBtn.innerHTML = state.cartExpanded ? upChevron : downChevron;
+    expandBtn.setAttribute("aria-label", state.cartExpanded ? "Collapse cart" : "Expand cart");
   }
 
   expandBtn.onclick = ()=>setCartExpanded_(!state.cartExpanded);
@@ -762,8 +871,6 @@
       statusEl.className="ok";
       setTimeout(()=>{statusEl.textContent=""; statusEl.className="danger";}, 1200);
 
-      // optional: switch to Ordered tab after send
-      // setPage_("ORDERED");
       fetchOrders();
     }catch(e){
       statusEl.textContent="Send failed. Use Overview to copy/screenshot and send downstairs.";
@@ -771,7 +878,7 @@
     }
   };
 
-  // Ordered tabs (New/Keyed In)
+  // Ordered tabs (New/Keyed In) — (3) switch tab => immediate refresh
   function setOrderedTab_(t){
     state.orderedTab = t;
     tabNewBtn.classList.toggle("active", t==="NEW");
@@ -813,6 +920,42 @@
     return true;
   }
 
+  /* New function: edit/delete menu (UI + edit to Order tab)
+     - Edit: loads order items back into Order tab, keeps notes, then switches to ORDER page.
+     - Delete: sends backend action "delete" (requires backend support). */
+  async function deleteOrder_(orderId){
+    if(!mustHaveUrl_()) return false;
+    const payload = { action:"delete", orderId };
+    const r = await fetch(SCRIPT_URL, {
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify(payload)
+    });
+    const j = await r.json();
+    if(!j.ok) throw new Error(j.error || "delete failed");
+    return true;
+  }
+
+  function loadOrderIntoCart_(order){
+    const items = parseItems(order.itemsJson);
+    state.table = String(order.table || state.table);
+    tableSel.value = state.table;
+
+    state.cartLines = items.map(it => ({
+      id: uid_(),
+      baseName: (it.name || "").split(" - ")[0], // best-effort baseName
+      displayName: String(it.name || ""),
+      qty: Number(it.qty||0) || 1,
+      note: String(it.note||"")
+    })).filter(x => x.qty > 0);
+
+    statusEl.textContent = "";
+    statusEl.className = "danger";
+    setPage_("ORDER");
+    renderAll();
+    setTimeout(scrollCartToBottom_, 0);
+  }
+
   function renderOrders(orders){
     ordersWrap.innerHTML = "";
     if (!orders.length){
@@ -822,11 +965,14 @@
 
     orders.forEach(o=>{
       const items = parseItems(o.itemsJson);
+
+      // (Ordered UI) darker separator lines between items, hide ID
+      const sep = "\n──────────────\n";
       const lines = items.map(it => {
         const base = `${it.qty} x ${it.name}`;
         const n = (it.note || "").trim();
         return n ? `${base}\n  - NOTE: ${n}` : base;
-      }).join("\n") || "(No items)";
+      }).join(sep) || "(No items)";
 
       const div = document.createElement("div");
       div.className = "ticket";
@@ -844,11 +990,16 @@
         <pre>${escapeHtml(lines)}</pre>
         <div class="actions">
           ${primaryBtn}
-          <span class="small muted">ID: ${escapeHtml(o.orderId || "")}</span>
+        </div>
+
+        <button class="kebabBtn" type="button" aria-label="Edit menu">
+          <div class="kebabDots"><span></span><span></span><span></span></div>
+        </button>
+        <div class="kebabMenu">
+          <button type="button" data-act="edit">Edit (return to Order)</button>
+          <button type="button" class="dangerBtn" data-act="delete">Delete</button>
         </div>
       `;
-
-;
 
       const btn = div.querySelector("button[data-id]");
       btn.onclick = async () => {
@@ -862,34 +1013,72 @@
         }
       };
 
+      const kebabBtn = div.querySelector(".kebabBtn");
+      const menu = div.querySelector(".kebabMenu");
+      const orderObj = { ...o };
+
+      kebabBtn.onclick = (ev)=>{
+        ev.stopPropagation();
+        // close other open menus
+        [...document.querySelectorAll(".kebabMenu")].forEach(x=>{ if(x!==menu) x.style.display="none"; });
+        menu.style.display = (menu.style.display === "block") ? "none" : "block";
+      };
+
+      menu.querySelector('button[data-act="edit"]').onclick = ()=>{
+        menu.style.display="none";
+        loadOrderIntoCart_(orderObj);
+      };
+
+      menu.querySelector('button[data-act="delete"]').onclick = async ()=>{
+        menu.style.display="none";
+        if (!confirm("Delete this order?")) return;
+        try{
+          await deleteOrder_(String(o.orderId||""));
+          fetchOrders();
+        }catch(e){
+          alert("Delete failed (backend action 'delete' not installed): " + (e.message || e));
+        }
+      };
+
+      // close menu on outside click
+      div.addEventListener("click", ()=>{ menu.style.display="none"; });
+
       ordersWrap.appendChild(div);
     });
   }
 
+  /* (4) refresh lock for stability */
+  let fetching = false;
+
   async function fetchOrders(){
+    if (fetching) return;
     if(!mustHaveUrl_()){
       liveStatus.textContent = "SCRIPT_URL not set.";
       return;
     }
+    fetching = true;
     liveStatus.textContent = "Refreshing…";
     try{
       const url = `${SCRIPT_URL}?status=${encodeURIComponent(state.orderedTab)}`;
-      const r = await fetch(url, { method:"GET" });
+      const r = await fetch(url, { method:"GET", cache:"no-store" });
       const j = await r.json();
       if(!j.ok) throw new Error(j.error || "GET failed");
       renderOrders(Array.isArray(j.orders) ? j.orders : []);
       liveStatus.textContent = `Updated: ${new Date().toLocaleTimeString()}`;
     }catch(e){
       liveStatus.textContent = "Refresh failed (check Apps Script deployment).";
+    }finally{
+      fetching = false;
     }
   }
 
   document.getElementById('refreshBtn').onclick = fetchOrders;
 
-  // Auto refresh (only when Ordered page visible)
+  /* (1) auto refresh interval => 1 second
+     (5) remove enable/disable checkbox => always refresh when on Ordered page */
   setInterval(()=>{
-    if (state.page === "ORDERED" && autoChk.checked) fetchOrders();
-  }, 3000);
+    if (state.page === "ORDERED") fetchOrders();
+  }, 1000);
 
   // End of day: clear all
   document.getElementById('clearAllBtn').onclick = async () => {
@@ -921,31 +1110,17 @@
   fetchOrders();
 
   // Block double-tap zoom (iOS Safari)
-let lastTouchEnd = 0;
-document.addEventListener('touchend', function (e) {
-  const now = Date.now();
-  if (now - lastTouchEnd <= 300) e.preventDefault();
-  lastTouchEnd = now;
-}, { passive: false });
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', function (e) {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) e.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
 
-// Block pinch zoom (iOS Safari)
-document.addEventListener('gesturestart', function (e) {
-  e.preventDefault();
-});
-document.addEventListener('gesturechange', function (e) {
-  e.preventDefault();
-});
-document.addEventListener('gestureend', function (e) {
-  e.preventDefault();
-});
-
+  // Block pinch zoom (iOS Safari)
+  document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+  document.addEventListener('gesturechange', function (e) { e.preventDefault(); });
+  document.addEventListener('gestureend', function (e) { e.preventDefault(); });
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
