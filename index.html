@@ -211,7 +211,36 @@
       background:#fff;
       display:none;
     }
+/* ===== hard stop horizontal overflow ===== */
+html, body{
+  max-width: 100%;
+  overflow-x: hidden;
+}
 
+*, *::before, *::after{
+  box-sizing: border-box;
+}
+
+.row > *{
+  min-width: 0; /* IMPORTANT for flex children (input/select/pre etc.) */
+}
+
+input, select, textarea, button{
+  max-width: 100%;
+}
+
+#searchBox{
+  width: 100%;
+  min-width: 0;
+}
+
+pre{
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  overflow-x: hidden;
+}
 /* disable sticky header/footer: make them scroll normally */
 .topNav{
   position: static !important;
@@ -222,9 +251,6 @@
   position: static !important;
   bottom: auto !important;
 }
- 
-
-
   </style>
 </head>
 <body>
@@ -1237,9 +1263,11 @@ async function fetchOrders(opts){
 
   // Block double-tap zoom (iOS Safari)
   let lastTouchEnd = 0;
-  document.addEventListener('gesturestart', function (e) {
-  e.preventDefault();
-});
+  document.addEventListener('touchend', function (e) {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) e.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
 
   // Block pinch zoom (iOS Safari)
   document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
@@ -1248,9 +1276,3 @@ async function fetchOrders(opts){
 </script>
 </body>
 </html>
-
-
-
-
-
-
