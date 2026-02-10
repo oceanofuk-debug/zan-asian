@@ -68,9 +68,10 @@
       border-bottom:1px solid #eee;
     }
     .topNav .tabBtn{
-      flex:1 1 50%;
-      width:50%;
-      justify-content:center;
+    flex: 1 1 0;
+    width: auto;          /* remove forced 50% */
+    min-width: 0;         /* allow shrink */
+    justify-content: center;
     }
 
     /* modal */
@@ -210,25 +211,34 @@
       background:#fff;
       display:none;
     }
-
-   /* ===== Layout safety (prevent horizontal scroll) ===== */
-*, *::before, *::after {
-  box-sizing: border-box;
-}
-
+/* ===== hard stop horizontal overflow ===== */
 html, body{
+  max-width: 100%;
   overflow-x: hidden;
 }
 
+*, *::before, *::after{
+  box-sizing: border-box;
+}
+
+.row > *{
+  min-width: 0; /* IMPORTANT for flex children (input/select/pre etc.) */
+}
+
+input, select, textarea, button{
+  max-width: 100%;
+}
+
 #searchBox{
+  width: 100%;
   min-width: 0;
 }
 
 pre{
   max-width: 100%;
   white-space: pre-wrap;
-  word-break: break-word;
   overflow-wrap: anywhere;
+  word-break: break-word;
   overflow-x: hidden;
 }
 
@@ -1257,5 +1267,6 @@ async function fetchOrders(opts){
 </script>
 </body>
 </html>
+
 
 
