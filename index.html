@@ -413,8 +413,8 @@ pre{
     { en:"Coke" },
     { en:"Diet Coke" },
     { en:"Lemonade" },
-    { en:"Tsing Dao" }
-    { en:"Tiger" }
+    { en:"Tsing Dao" },
+    { en:"Tiger" },
     { en:"Asahi" }
   ]
 };
@@ -746,7 +746,8 @@ pre{
   `Lunch Set — ${mainObj.en}${mainObj?.zh ? " / " + mainObj.zh : ""}\n` +
   `Starter: ${starterObj.en}` +
   (drinkObj ? `\nDrink: ${drinkObj.en}` : "");
-  addLine_({
+  
+    addLine_({
     id: uid_(),
     baseName: "Lunch Set",
     displayName: display,
@@ -1072,12 +1073,6 @@ pre{
     }
   };
 
-  document.getElementById('fullscreenBtn').onclick = () => {
-    const wrap = overviewBox.parentElement;
-    if (!document.fullscreenElement) wrap.requestFullscreen?.();
-    else document.exitFullscreen?.();
-  };
-
   // Send order (FULLSCREEN loading + success/fail)
   document.getElementById('submitBtn').onclick=async()=>{
     statusEl.className="danger";
@@ -1397,6 +1392,7 @@ async function fetchOrders(opts){
 </script>
 </body>
 </html>
+
 
 
 
