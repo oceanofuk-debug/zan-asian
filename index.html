@@ -250,8 +250,7 @@ pre{
 
   <!-- PAGE: ORDER -->
   <div id="pageOrder">
-    <h1>Upstairs Ordering (Temporary)</h1>
-
+    
     <div class="row">
       <label>Table:</label>
       <select id="tableSel"></select>
@@ -276,7 +275,6 @@ pre{
         <div><b>Overview (Fallback)</b> <span class="muted">— copy text or screenshot</span></div>
         <div class="row">
           <button id="copyBtn" type="button">Copy Text</button>
-          <button id="fullscreenBtn" type="button">Fullscreen</button>
         </div>
       </div>
       <pre id="overviewBox"></pre>
@@ -381,6 +379,7 @@ pre{
       "Szechuan (Beef)","Szechuan (Chicken)","Szechuan (King Prawn)",
       "Sambal Stir-Fried Morning Glory","Garlic Stir-Fried Morning Glory"
     ],
+    "Lunch Set": ["__LUNCH_SET__"],
     "Asian Salads": ["Acar Salad","Rojak Salad"],
     "Sizzling Platters": ["Sambal Sizzling King Prawn","Sizzling Black Pepper Beef Tenderloin"],
     "Rice Dishes": [
@@ -390,7 +389,32 @@ pre{
     "Sides": ["Coconut Rice","Fragrant Rice","Boiled Rice","Egg Fried Rice","Noodles","Chips"],
     "Dessert": ["Banana Fritter"]
   };
-
+  const LUNCH_SET = {
+  starters: [
+    { en:"Fishbal" },
+    { en:"Pandan Chicken" },
+    { en:"Spring Roll" },
+    { en:"Chicken Satay Skewer" },
+    { en:"Chicken Gyozas" }
+  ],
+  mains: [
+    { en:"Malaysian Curry Laksa + Chicken Gyoza", zh:"马来咖喱叻沙 },
+    { en:"Chicken Flat Noodle + Chicken Gyoza", zh:"白切鸡河粉" },
+    { en:"Mongolian Chicken with Rice", zh:"蒙古鸡饭" },
+    { en:"Pad Thai (Chicken)", zh:"泰式炒河粉（鸡）" },
+    { en:"Pad Thai (Beef)", zh:"泰式炒河粉（牛）" },
+    { en:"Malaysian Char Kuey Teow", zh:"马来西亚炒粿条" },
+    { en:"Garlic Fried Rice (Chicken)", zh:"蒜香炒饭（鸡）" },
+    { en:"Garlic Fried Rice (Beef)", zh:"蒜香炒饭（牛）" },
+    { en:"Creamy Salted Egg Yolk Chicken with Rice", zh:"咸蛋奶油鸡饭" },
+    { en:"Sweet & Sour Chicken with Rice", zh:"咕噜鸡饭" }
+  ],
+  drinks: [
+    { en:"Coke / Diet Coke" },
+    { en:"Lemonade" },
+    { en:"beer" }
+  ]
+};
   // ---- DRINKS MENU ----
   const MIXER_CHOICES = ["Lemonade","Coke","Diet Coke","Tonic","Slimline Tonic","Fruit Juice"];
   const DRINKS_MENU = {
@@ -437,7 +461,7 @@ pre{
       { type:"plain", name:"Tiger Beer", price:4.90 },
       { type:"plain", name:"Asahi Beer", price:4.90 }
     ],
-    "Drinks — Spirits (per shot)": [
+    "Drinks — Spirits": [
       { type:"spirit", name:"Gin", basePrice:3.60 },
       { type:"spirit", name:"Vodka", basePrice:3.60 },
       { type:"spirit", name:"Tequila", basePrice:3.60 },
@@ -636,7 +660,104 @@ pre{
     return null;
   }
 
+  async function handleLunchSet_(){
+
+  // 1️⃣ Select Main
+  const main = await openModal_("Lunch Set — Select Main Dish", (root)=>{
+    let selected = LUNCH_SET.mains[0].en;
+
+    LUNCH_SET.mains.forEach(m=>{
+      const b = document.createElement("button");
+      b.type="button";
+      b.textContent = `${m.en} / ${m.zh}`;
+      b.onclick = ()=>{
+        selected = m.en;
+        [...root.querySelectorAll("button")].forEach(x=>x.classList.remove("primary"));
+        b.classList.add("primary");
+      };
+      root.appendChild(b);
+    });
+
+    return { get: ()=> selected };
+  });
+
+  if (!main) return;
+
+  // 2️⃣ Select Starter
+  const starter = await openModal_("Lunch Set — Select Starter", (root)=>{
+    let selected = LUNCH_SET.starters[0].en;
+
+    LUNCH_SET.starters.forEach(s=>{
+      const b = document.createElement("button");
+      b.type="button";
+      b.textContent = `${s.en} / ${s.zh}`;
+      b.onclick = ()=>{
+        selected = s.en;
+        [...root.querySelectorAll("button")].forEach(x=>x.classList.remove("primary"));
+        b.classList.add("primary");
+      };
+      root.appendChild(b);
+    });
+
+    return { get: ()=> selected };
+  });
+
+  if (!starter) return;
+
+  // 3️⃣ Optional Drink
+  const drink = await openModal_("Lunch Set — Optional Drink", (root)=>{
+    let selected = "";
+
+    const none = document.createElement("button");
+    none.type="button";
+    none.textContent = "No drink";
+    none.classList.add("primary");
+    none.onclick = ()=>{
+      selected = "";
+      [...root.querySelectorAll("button")].forEach(x=>x.classList.remove("primary"));
+      none.classList.add("primary");
+    };
+    root.appendChild(none);
+
+    LUNCH_SET.drinks.forEach(d=>{
+      const b = document.createElement("button");
+      b.type="button";
+      b.textContent = `${d.en} / ${d.zh}`;
+      b.onclick = ()=>{
+        selected = d.en;
+        [...root.querySelectorAll("button")].forEach(x=>x.classList.remove("primary"));
+        b.classList.add("primary");
+      };
+      root.appendChild(b);
+    });
+
+    return { get: ()=> selected };
+  });
+
+  // 4️⃣ Build final line (NO PRICE)
+  const mainObj = LUNCH_SET.mains.find(x=>x.en===main);
+  const starterObj = LUNCH_SET.starters.find(x=>x.en===starter);
+  const drinkObj = LUNCH_SET.drinks.find(x=>x.en===drink);
+
+  const display = 
+    `Lunch Set — ${mainObj.en} / ${mainObj.zh}\n` +
+    ` ${starterObj.en}` +
+    (drinkObj ? `\ ${drinkObj.en}` : "");
+
+  addLine_({
+    id: uid_(),
+    baseName: "Lunch Set",
+    displayName: display,
+    qty: 1,
+    note: ""
+  });
+}
   async function handleAdd_(item){
+    if (item === "__LUNCH_SET__"){
+  await handleLunchSet_();
+  return;
+    }
+    
     if (typeof item === "string"){
       const baseName = item;
       addLine_({ id: uid_(), baseName, displayName: baseName, qty: 1, note: "" });
@@ -1274,6 +1395,7 @@ async function fetchOrders(opts){
 </script>
 </body>
 </html>
+
 
 
 
