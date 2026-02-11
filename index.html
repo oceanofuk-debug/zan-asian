@@ -1135,10 +1135,21 @@ pre{
         menu.style.display = (menu.style.display === "block") ? "none" : "block";
       };
 
-      menu.querySelector('button[data-act="edit"]').onclick = ()=>{
-        menu.style.display="none";
-        loadOrderIntoCart_(orderObj);
-      };
+     menu.querySelector('button[data-act="edit"]').onclick = async ()=>{
+  menu.style.display = "none";
+
+  // 1) 先載入到 Order（保留 items + notes）
+  loadOrderIntoCart_(orderObj);
+
+  // 2) 再刪除原單（soft-delete -> DELETED，會即時喺 New/Keyed in 消失）
+  try{
+    await deleteOrder_(String(orderObj.orderId || ""));
+    // Ordered 頁面背景更新（唔會阻住用戶已經去咗 Order）
+    fetchOrders({ force:true });
+  }catch(e){
+    alert("Edit loaded, but auto-delete failed: " + (e.message || e));
+  }
+};
 
       menu.querySelector('button[data-act="delete"]').onclick = async ()=>{
         menu.style.display="none";
@@ -1263,5 +1274,6 @@ async function fetchOrders(opts){
 </script>
 </body>
 </html>
+
 
 
