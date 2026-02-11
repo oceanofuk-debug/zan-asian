@@ -742,11 +742,6 @@ pre{
   const starterObj = LUNCH_SET.starters.find(x=>x.en===starter);
   const drinkObj = LUNCH_SET.drinks.find(x=>x.en===drink);
 
-  const display = 
-    `Lunch Set — ${mainObj.en} / ${mainObj.zh}\n` +
-    ` ${starterObj.en}` +
-    (drinkObj ? `\ ${drinkObj.en}` : "");
-
   const display =
   `Lunch Set — ${mainObj.en}${mainObj?.zh ? " / " + mainObj.zh : ""}\n` +
   `Starter: ${starterObj.en}` +
@@ -1402,6 +1397,7 @@ async function fetchOrders(opts){
 </script>
 </body>
 </html>
+
 
 
 
