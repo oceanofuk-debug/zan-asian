@@ -693,7 +693,7 @@ pre{
     LUNCH_SET.starters.forEach(s=>{
       const b = document.createElement("button");
       b.type="button";
-      b.textContent = `${s.en} / ${s.zh}`;
+      b.textContent = `${s.en}`;
       b.onclick = ()=>{
         selected = s.en;
         [...root.querySelectorAll("button")].forEach(x=>x.classList.remove("primary"));
@@ -725,7 +725,7 @@ pre{
     LUNCH_SET.drinks.forEach(d=>{
       const b = document.createElement("button");
       b.type="button";
-      b.textContent = `${d.en} / ${d.zh}`;
+      b.textContent = `${d.en}`;
       b.onclick = ()=>{
         selected = d.en;
         [...root.querySelectorAll("button")].forEach(x=>x.classList.remove("primary"));
@@ -744,8 +744,8 @@ pre{
 
   const display =
   `Lunch Set — ${mainObj.en}${mainObj?.zh ? " / " + mainObj.zh : ""}\n` +
-  `Starter: ${starterObj.en}` +
-  (drinkObj ? `\nDrink: ${drinkObj.en}` : "");
+  ` : ${starterObj.en}` +
+  (drinkObj ? `\n : ${drinkObj.en}` : "");
   
     addLine_({
     id: uid_(),
@@ -1392,6 +1392,7 @@ async function fetchOrders(opts){
 </script>
 </body>
 </html>
+
 
 
 
