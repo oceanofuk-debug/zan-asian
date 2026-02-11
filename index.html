@@ -398,7 +398,7 @@ pre{
     { en:"Chicken Gyozas" }
   ],
   mains: [
-    { en:"Malaysian Curry Laksa + Chicken Gyoza", zh:"马来咖喱叻沙 },
+    { en:"Malaysian Curry Laksa + Chicken Gyoza", zh:"马来咖喱叻沙" },
     { en:"Chicken Flat Noodle + Chicken Gyoza", zh:"白切鸡河粉" },
     { en:"Mongolian Chicken with Rice", zh:"蒙古鸡饭" },
     { en:"Pad Thai (Chicken)", zh:"泰式炒河粉（鸡）" },
@@ -410,9 +410,12 @@ pre{
     { en:"Sweet & Sour Chicken with Rice", zh:"咕噜鸡饭" }
   ],
   drinks: [
-    { en:"Coke / Diet Coke" },
+    { en:"Coke" },
+    { en:"Diet Coke" },
     { en:"Lemonade" },
-    { en:"beer" }
+    { en:"Tsing Dao" }
+    { en:"Tiger" }
+    { en:"Asahi" }
   ]
 };
   // ---- DRINKS MENU ----
@@ -744,6 +747,10 @@ pre{
     ` ${starterObj.en}` +
     (drinkObj ? `\ ${drinkObj.en}` : "");
 
+  const display =
+  `Lunch Set — ${mainObj.en}${mainObj?.zh ? " / " + mainObj.zh : ""}\n` +
+  `Starter: ${starterObj.en}` +
+  (drinkObj ? `\nDrink: ${drinkObj.en}` : "");
   addLine_({
     id: uid_(),
     baseName: "Lunch Set",
@@ -1395,6 +1402,7 @@ async function fetchOrders(opts){
 </script>
 </body>
 </html>
+
 
 
 
