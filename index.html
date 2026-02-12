@@ -354,6 +354,77 @@ pre{
       && SCRIPT_URL.endsWith("/exec");
   }
 
+  // ===== operator picker (preset list) =====
+const OP_KEY = "orderpad_operator_v1";
+
+// 你預先入好嘅員工名（自行改）
+const OPERATORS = [
+  "Ocean",
+  "Andy",
+  "kim",
+  "Amy",
+  "Jane",
+  "Joey",
+  "Kai",
+  "Steph",
+  "(˶˃ ᵕ ˂˶)"
+];
+
+let operatorName = "";
+
+function loadOperator_(){
+  try{ operatorName = String(localStorage.getItem(OP_KEY)||"").trim(); }catch{}
+}
+
+function saveOperator_(name){
+  operatorName = String(name||"").trim();
+  try{ localStorage.setItem(OP_KEY, operatorName); }catch{}
+  const el = document.getElementById("opName");
+  if (el) el.textContent = operatorName || "-";
+}
+
+async function pickOperator_(){
+  // 用你現有 openModal_（唔新增新 modal 系統）
+  const picked = await openModal_("Select operator", (root)=>{
+    const wrap = document.createElement("div");
+    wrap.className = "btnGrid";
+
+    let selected = operatorName || "";
+    OPERATORS.forEach(n=>{
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = n;
+      b.onclick = ()=>{
+        selected = n;
+        [...wrap.querySelectorAll("button")].forEach(x=>x.classList.remove("primary"));
+        b.classList.add("primary");
+      };
+      if (n === selected) b.classList.add("primary");
+      wrap.appendChild(b);
+    });
+
+    root.appendChild(wrap);
+    return { get: ()=> selected || null };
+  });
+
+  if (!picked) return false;
+  saveOperator_(picked);
+  return true;
+}
+
+async function ensureOperator_(){
+  loadOperator_();
+  if (!operatorName){
+    // 第一次強制選，唔畀 Cancel 就一直彈
+    let ok = false;
+    while(!ok){
+      ok = await pickOperator_();
+    }
+  } else {
+    saveOperator_(operatorName); // refresh UI
+  }
+}
+
   // ---- FOOD MENU ----
   const FOOD_MENU = {
     "Starters": [
@@ -1392,6 +1463,7 @@ async function fetchOrders(opts){
 </script>
 </body>
 </html>
+
 
 
 
