@@ -1289,22 +1289,21 @@ async function ensureOperator_(){
         ? `<button data-id="${o.orderId}" data-next="KEYED_IN">Keyed In</button>`
         : `<button data-id="${o.orderId}" data-next="NEW">Move back to New</button>`;
 
-      div.innerHTML = `
-  <div class="top">
-    <b>${escapeHtml(o.table || "-")}</b>
-    <span class="muted">${escapeHtml(fmtTime(o.ts))}</span>
-  </div>
+    div.innerHTML = `
+      <div class="top">
+        <b>${escapeHtml(o.table || "-")}</b>
+        <span class="muted">${escapeHtml(fmtTime(o.ts))}</span>
+      </div>
 
-  <div class="small muted" style="margin-top:4px;">
-    By: ${escapeHtml(o.operator || "-")}
-  </div>
+      <div class="small muted" style="margin-top:4px;">
+        By: ${escapeHtml(o.operator || "-")}
+      </div>
 
-  <pre>${escapeHtml(lines)}</pre>
+      <pre>${escapeHtml(lines)}</pre>
 
-  <div class="actions">
-    ${primaryBtn}
-  </div>
-`;
+      <div class="actions">
+        ${primaryBtn}
+      </div>
 
 
         <button class="kebabBtn" type="button" aria-label="Edit menu">
@@ -1478,6 +1477,7 @@ async function fetchOrders(opts){
 </script>
 </body>
 </html>
+
 
 
 
