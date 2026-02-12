@@ -283,7 +283,11 @@ pre{
     <!-- Cart -->
     <div class="cart">
       <div class="row" style="justify-content:space-between;">
-        <div><b>Total items:</b> <span id="totalQty">0</span></div>
+        <div>
+          <b>Total items:</b> <span id="totalQty">0</span>
+          <span class="small" style="margin-left:10px;">By: <b id="opName">-</b></span>
+        </div>
+
         <div class="row">
           <button id="expandBtn" class="expandBtn" type="button" aria-label="Expand cart"></button>
           <button id="submitBtn" type="button">Send Order</button>
@@ -1474,6 +1478,7 @@ async function fetchOrders(opts){
 </script>
 </body>
 </html>
+
 
 
 
