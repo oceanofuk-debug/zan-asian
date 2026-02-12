@@ -1158,7 +1158,9 @@ async function ensureOperator_(){
       note: (l.note || "").trim()
     }));
 
-    const payload = { action:"create", table: state.table, items, note:"" };
+    await ensureOperator_();
+    const payload = { action:"create", table: state.table, operator: operatorName, items, note:"" };
+
 
     try{
       const r = await fetch(SCRIPT_URL, {
@@ -1284,14 +1286,22 @@ async function ensureOperator_(){
         : `<button data-id="${o.orderId}" data-next="NEW">Move back to New</button>`;
 
       div.innerHTML = `
-        <div class="top">
-          <b>${escapeHtml(o.table || "-")}</b>
-          <span class="muted">${escapeHtml(fmtTime(o.ts))}</span>
-        </div>
-        <pre>${escapeHtml(lines)}</pre>
-        <div class="actions">
-          ${primaryBtn}
-        </div>
+  <div class="top">
+    <b>${escapeHtml(o.table || "-")}</b>
+    <span class="muted">${escapeHtml(fmtTime(o.ts))}</span>
+  </div>
+
+  <div class="small muted" style="margin-top:4px;">
+    By: ${escapeHtml(o.operator || "-")}
+  </div>
+
+  <pre>${escapeHtml(lines)}</pre>
+
+  <div class="actions">
+    ${primaryBtn}
+  </div>
+`;
+
 
         <button class="kebabBtn" type="button" aria-label="Edit menu">
           <div class="kebabDots"><span></span><span></span><span></span></div>
@@ -1446,6 +1456,7 @@ async function fetchOrders(opts){
   // Initial
   setCartExpanded_(false);
   renderAll();
+  ensureOperator_();
   fetchOrders();
 
   // Block double-tap zoom (iOS Safari)
@@ -1463,6 +1474,7 @@ async function fetchOrders(opts){
 </script>
 </body>
 </html>
+
 
 
 
