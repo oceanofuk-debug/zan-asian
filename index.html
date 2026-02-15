@@ -1024,19 +1024,17 @@ async function ensureOperator_(){
     const lower = String(name || "").toLowerCase();
 
     // 0️⃣ Drinks
-    if (lower.includes("White Wine") ||
-        lower.includes("Rosé Wine") ||
-        lower.includes("Red Wine") ||
-        lower.includes("The Fizz") ||
-        lower.includes("Mocktails") ||
-        lower.includes("Cocktails") ||
-        lower.includes("Signature Drinks") ||
-        lower.includes("Beer") ||
-        lower.includes("Spirits") ||
-        lower.includes("Soft Drinks") ||
-        lower.includes("Hot Drinks")) {
+    for (const cat in DRINKS_MENU) {
+    const arr = DRINKS_MENU[cat] || [];
+
+    if (arr.some(d => {
+      const name = (typeof d === "string") ? d : d?.name;
+      return name && lower.includes(name.toLowerCase());
+      })) {
       return 0;
+      }
     }
+
 
     // 1️⃣ Starters
     if (FOOD_MENU["Starters"] &&
@@ -1519,6 +1517,7 @@ async function fetchOrders(opts){
 </script>
 </body>
 </html>
+
 
 
 
