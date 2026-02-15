@@ -1018,6 +1018,50 @@ async function ensureOperator_(){
     itemsWrap.appendChild(g);
   }
 
+  function sortItemsForSend_(items){
+
+  function getGroup(name){
+    const lower = String(name || "").toLowerCase();
+
+    // 0️⃣ Drinks
+    if (lower.includes("wine") ||
+        lower.includes("beer") ||
+        lower.includes("cocktail") ||
+        lower.includes("mocktail") ||
+        lower.includes("coffee") ||
+        lower.includes("tea") ||
+        lower.includes("coke") ||
+        lower.includes("lemonade") ||
+        lower.includes("water") ||
+        lower.includes("juice") ||
+        lower.includes("vodka") ||
+        lower.includes("whisky") ||
+        lower.includes("gin") ||
+        lower.includes("brandy") ||
+        lower.includes("tequila")) {
+      return 0;
+    }
+
+    // 1️⃣ Starters
+    if (FOOD_MENU["Starters"] &&
+        FOOD_MENU["Starters"].some(s => lower.includes(s.toLowerCase()))) {
+      return 1;
+    }
+
+    // 2️⃣ Lunch Set
+    if (lower.includes("lunch set")) {
+      return 2;
+    }
+
+    // 3️⃣ Others
+    return 3;
+  }
+
+  return items.slice().sort((a,b)=>{
+    return getGroup(a.name) - getGroup(b.name);
+  });
+}
+
   function buildOverviewText(){
     const lines = [];
     lines.push(`TABLE: ${state.table}`);
@@ -1156,11 +1200,13 @@ async function ensureOperator_(){
 
     showSendOverlay_("Sending…", "Please wait.", false);
 
-    const items = state.cartLines.map(l => ({
+    let items = state.cartLines.map(l => ({
       name: l.displayName,
       qty: l.qty,
       note: (l.note || "").trim()
     }));
+
+    items = sortItemsForSend_(items);
 
     await ensureOperator_();
     const payload = { action:"create", table: state.table, operator: operatorName, items, note:"" };
@@ -1477,6 +1523,7 @@ async function fetchOrders(opts){
 </script>
 </body>
 </html>
+
 
 
 
