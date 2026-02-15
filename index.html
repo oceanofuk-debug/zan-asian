@@ -437,7 +437,7 @@ async function ensureOperator_(){
       "Grilled Chicken Satay Skewers","Spring Roll (Veg)","Spring Roll (Meat)","Five-Spice Fried Roll",
       "Gyoza (Chicken)","Gyoza (Veg)","Salt & Pepper Chicken"
     ],
-    "Malaysian Curries": [
+    "Curries": [
       "Rendang Beef Brisket","Malaysian Chicken Curry",
       "Asam Curry (Chicken)","Asam Curry (Beef)","Asam Curry (Tofu)","Asam Curry (Prawn)",
       "Nyonya Gulai Curry (Chicken)","Nyonya Gulai Curry (Beef)","Nyonya Gulai Curry (Tofu)","Nyonya Gulai Curry (Prawn)",
@@ -496,50 +496,50 @@ async function ensureOperator_(){
   // ---- DRINKS MENU ----
   const MIXER_CHOICES = ["Lemonade","Coke","Diet Coke","Tonic","Slimline Tonic","Fruit Juice"];
   const DRINKS_MENU = {
-    "Drinks — White Wine": [
+    "White Wine": [
       { type:"wine", name:"Cuvée Duboeuf Blanc (Bouquet Label)", sizes:[ {label:"Bottle", price:27.95} ] },
       { type:"wine", name:"Pinot Grigio delle Dolomiti (Trovati)", sizes:[ {label:"125ml", price:5.50},{label:"175ml", price:7.50},{label:"Bottle", price:28.95} ] },
       { type:"wine", name:"Fiddlehead Sauvignon Blanc", sizes:[ {label:"125ml", price:5.75},{label:"175ml", price:7.95},{label:"Bottle", price:29.95} ] },
       { type:"wine", name:"Sancerre (Domaine Cherrier)", sizes:[ {label:"Bottle", price:49.95} ] },
       { type:"wine", name:"Chablis 1er Cru (Vau de Vey, Brocard Organic)", sizes:[ {label:"Bottle", price:69.95} ] }
     ],
-    "Drinks — Rosé Wine": [
+    "Rosé Wine": [
       { type:"wine", name:"Zinfandel Rosé (Beringer)", sizes:[ {label:"125ml", price:5.25},{label:"175ml", price:6.95},{label:"Bottle", price:27.95} ] },
       { type:"wine", name:"Lady A (La Coste Provence Rosé)", sizes:[ {label:"Bottle", price:39.95} ] }
     ],
-    "Drinks — Red Wine": [
+    "Red Wine": [
       { type:"wine", name:"Cuvée Duboeuf Rouge (Bouquet Label)", sizes:[ {label:"Bottle", price:27.95} ] },
       { type:"wine", name:"Merlot Reserva (Poco Mas)", sizes:[ {label:"125ml", price:5.50},{label:"175ml", price:7.50},{label:"Bottle", price:28.95} ] },
       { type:"wine", name:"Malbec Porteño (Norton)", sizes:[ {label:"125ml", price:5.75},{label:"175ml", price:7.95},{label:"Bottle", price:29.95} ] },
       { type:"wine", name:"Rioja Reserva (Conde Valdemar)", sizes:[ {label:"Bottle", price:44.95} ] },
       { type:"wine", name:"Château Chantalouette (Pomerol)", sizes:[ {label:"Bottle", price:79.95} ] }
     ],
-    "Drinks — The Fizz": [
+    "The Fizz": [
       { type:"wine", name:"Prosecco Extra Dry (Serena 1881)", sizes:[ {label:"Mini bottle", price:8.95} ] },
       { type:"wine", name:"Cá del Console Prosecco Extra Dry", sizes:[ {label:"Bottle", price:29.95} ] },
       { type:"wine", name:"Organic Prosecco (Serena 1881)", sizes:[ {label:"Bottle", price:35.00} ] },
       { type:"wine", name:"Champagne Laurent-Perrier La Cuvée", sizes:[ {label:"Bottle", price:79.95} ] }
     ],
-    "Drinks — Mocktails": [
+    "Mocktails": [
       { type:"plain", name:"Galaxy Strawberry", price:5.90 },
       { type:"plain", name:"Lemon Yakult", price:5.90 },
       { type:"plain", name:"Passionfruit Green Tea", price:5.90 }
     ],
-    "Drinks — Cocktails": [
+    "Cocktails": [
       { type:"plain", name:"Strawberry Jupiter", price:9.90 },
       { type:"plain", name:"Oriental Blue Moon", price:9.90 }
     ],
-    "Drinks — Signature Drinks": [
+    "Signature Drinks": [
       { type:"plain", name:"White Coffee Iced", price:3.95 },
       { type:"plain", name:"Syrup Bandung", price:3.95 },
       { type:"plain", name:"Milo Iced", price:3.95 }
     ],
-    "Drinks — Beer": [
+    "Beer": [
       { type:"plain", name:"Tsing Tao Beer", price:4.90 },
       { type:"plain", name:"Tiger Beer", price:4.90 },
       { type:"plain", name:"Asahi Beer", price:4.90 }
     ],
-    "Drinks — Spirits": [
+    "Spirits": [
       { type:"spirit", name:"Gin", basePrice:3.60 },
       { type:"spirit", name:"Vodka", basePrice:3.60 },
       { type:"spirit", name:"Tequila", basePrice:3.60 },
@@ -549,7 +549,7 @@ async function ensureOperator_(){
       { type:"spirit", name:"Tequila Rose", basePrice:4.00 },
       { type:"spirit", name:"Cazcabel Honey", basePrice:4.00 }
     ],
-    "Drinks — Soft Drinks": [
+    "Soft Drinks": [
       { type:"plain", name:"J2O Orange & Passionfruit", price:3.00 },
       { type:"plain", name:"Coke", price:3.00 },
       { type:"plain", name:"Diet Coke", price:3.00 },
@@ -562,7 +562,7 @@ async function ensureOperator_(){
       { type:"plain", name:"Still Water", price:2.50 },
       { type:"plain", name:"Sparkling Water", price:2.50 }
     ],
-    "Drinks — Hot Drinks": [
+    "Hot Drinks": [
       { type:"plain", name:"Chinese Tea", price:2.50 },
       { type:"plain", name:"English Tea", price:3.00 },
       { type:"plain", name:"Coffee", price:3.00 }
@@ -1024,21 +1024,17 @@ async function ensureOperator_(){
     const lower = String(name || "").toLowerCase();
 
     // 0️⃣ Drinks
-    if (lower.includes("wine") ||
-        lower.includes("beer") ||
-        lower.includes("cocktail") ||
-        lower.includes("mocktail") ||
-        lower.includes("coffee") ||
-        lower.includes("tea") ||
-        lower.includes("coke") ||
-        lower.includes("lemonade") ||
-        lower.includes("water") ||
-        lower.includes("juice") ||
-        lower.includes("vodka") ||
-        lower.includes("whisky") ||
-        lower.includes("gin") ||
-        lower.includes("brandy") ||
-        lower.includes("tequila")) {
+    if (lower.includes("White Wine") ||
+        lower.includes("Rosé Wine") ||
+        lower.includes("Red Wine") ||
+        lower.includes("The Fizz") ||
+        lower.includes("Mocktails") ||
+        lower.includes("Cocktails") ||
+        lower.includes("Signature Drinks") ||
+        lower.includes("Beer") ||
+        lower.includes("Spirits") ||
+        lower.includes("Soft Drinks") ||
+        lower.includes("Hot Drinks")) {
       return 0;
     }
 
@@ -1523,6 +1519,7 @@ async function fetchOrders(opts){
 </script>
 </body>
 </html>
+
 
 
 
